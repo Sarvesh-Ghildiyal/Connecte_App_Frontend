@@ -1,14 +1,7 @@
-import { Outlet } from 'react-router-dom'
+// App.tsx is now a thin shell — routing and layout are handled via
+// AppRouter (router.tsx) + ProtectedRoute + DashboardLayout.
+// This file is kept for potential future root-level providers.
 
-function App() {
-  return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* Root Layout - Navbar/Sidebar can go here */}
-      <main>
-        <Outlet />
-      </main>
-    </div>
-  )
+export default function App() {
+  return null;
 }
-
-export default App
