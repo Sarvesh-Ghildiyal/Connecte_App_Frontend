@@ -4,6 +4,18 @@ import { ArrowRight } from 'lucide-react';
 import { authService } from '@/services/auth';
 import { useAuthStore } from '@/store/authStore';
 
+// ── Icons ───────────────────────────────────────────────────────────────────
+const NodeIcon = () => (
+  <svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+    <polyline points="7.5 19.79 7.5 14.6 3 12" />
+    <polyline points="21 12 16.5 14.6 16.5 19.79" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /auth/signup
 // Capitol Lean — mirrors Login layout
@@ -51,44 +63,48 @@ export default function Signup() {
   };
 
   const inputCls = `
-    w-full h-14 px-4
-    bg-[#E2E2E2] border-0 border-b-2 border-transparent
-    text-[#1B1B1B] placeholder:text-[#1B1B1B]/30 text-sm font-medium
+    w-full h-[55px] px-4
+    bg-[#F3F3F3] border-none
+    text-[16px] font-medium text-[#1B1B1B] placeholder:text-[#D1D5DB]
     transition-all outline-none
-    focus:border-b-[#006D2F] focus:bg-[#EBEBEB]
+    focus:bg-[#EDEDED]
     disabled:opacity-50
     rounded-none
   `;
 
   return (
-    <div className="flex min-h-screen bg-[#F3F3F3]">
-      {/* Left brand panel */}
-      <div className="hidden lg:flex lg:w-[58%] flex-col justify-between bg-[#F3F3F3] p-12">
-        <p className="text-label-md text-[#1B1B1B] opacity-40 tracking-[0.12em]">
-          SYSTEM_VERSION_1.0.4
-        </p>
-        <div className="flex flex-col gap-4">
-          <h1
-            className="font-black uppercase leading-none text-[#1B1B1B]"
-            style={{ fontSize: 'clamp(5rem, 10vw, 8rem)', letterSpacing: '-0.02em' }}
-          >
-            CONNECTE.
-          </h1>
-          <p className="text-label-md text-[#1B1B1B] tracking-[0.2em] opacity-60">
-            THE PRECISION LEDGER
+    <div className="flex flex-col lg:flex-row min-h-screen bg-white font-plus-jakarta">
+      {/* ── LEFT: Brand panel (60% Split) ────────────────────────── */}
+      <div className="flex w-full lg:w-[60%] flex-col justify-between pt-[63px] px-[64px] pb-[64px] bg-[#F9F9F9] min-h-[400px] lg:min-h-screen">
+        <div className="space-y-[8.5px]">
+          <p className="text-[11px] leading-[16px] font-normal text-[#6B7280] tracking-[2.2px] uppercase">
+            SYSTEM_VERSION_1.0.4
           </p>
+
+          <div className="space-y-[8.5px]">
+            <h1 className="text-[96px] font-bold text-[#0B0C10] leading-[96px] tracking-[-3.84px] uppercase font-dm-sans">
+              CONNECTE.
+            </h1>
+            <p className="text-[12px] font-semibold text-[#0B0C10] leading-[18px] tracking-[4.8px] uppercase font-dm-sans">
+              THE PRECISION LEDGER
+            </p>
+          </div>
         </div>
-        <p className="text-label-md text-[#1B1B1B] opacity-30 tracking-[0.12em]">
-          ENCRYPTED_NODE_STABLE
-        </p>
+
+        <div className="flex items-center gap-4 text-[#0B0C10] opacity-40 font-normal tracking-[1.1px] text-[11px] leading-[16px]">
+          <NodeIcon />
+          <span>ENCRYPTED_NODE_STABLE</span>
+        </div>
       </div>
 
-      {/* Right form panel */}
-      <div className="w-full lg:w-[42%] flex flex-col justify-center px-12 py-16 bg-white min-h-screen">
-        <div className="max-w-sm w-full mx-auto">
-          <div className="mb-10">
-            <h2 className="text-headline-lg text-[#1B1B1B] mb-2">REQUEST ACCESS</h2>
-            <p className="text-sm text-[#1B1B1B] opacity-50">
+      {/* ── RIGHT: Access form panel (40% Split) ─────────────────────────── */}
+      <div className="w-full lg:w-[40%] flex flex-col justify-center p-16 bg-white min-h-screen shadow-[-20px_0px_50px_rgba(11,12,16,0.02)]">
+        <div className="max-w-[400px] w-full mx-auto space-y-[39px]">
+          <div className="space-y-2">
+            <h2 className="text-[32px] font-bold text-[#0B0C10] leading-[48px] tracking-[-0.8px] uppercase">
+              REQUEST ACCESS
+            </h2>
+            <p className="text-[14px] leading-[21px] text-[#6B7280] font-normal">
               Create credentials to initialize your account.
             </p>
           </div>
@@ -104,8 +120,8 @@ export default function Signup() {
           )}
 
           <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-5">
-            <div className="space-y-2">
-              <label htmlFor="signup-name" className="text-label-md text-[#1B1B1B] tracking-[0.1em]">
+            <div className="space-y-[8.5px]">
+              <label htmlFor="signup-name" className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
                 display name
               </label>
               <input
@@ -120,8 +136,8 @@ export default function Signup() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="signup-email" className="text-label-md text-[#1B1B1B] tracking-[0.1em]">
+            <div className="space-y-[8.5px]">
+              <label htmlFor="signup-email" className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
                 email
               </label>
               <input
@@ -136,8 +152,8 @@ export default function Signup() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="signup-password" className="text-label-md text-[#1B1B1B] tracking-[0.1em]">
+            <div className="space-y-[8.5px]">
+              <label htmlFor="signup-password" className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
                 password
               </label>
               <input
@@ -158,16 +174,11 @@ export default function Signup() {
                 type="submit"
                 disabled={isLoading}
                 className="
-                  w-full h-14 flex items-center justify-center gap-3
-                  text-white font-semibold text-sm tracking-[0.1em] uppercase
+                  w-full h-[61px] flex items-center justify-center gap-3
+                  text-white font-semibold text-[14px] leading-[21px] font-dm-sans tracking-[1.4px] uppercase
                   transition-all disabled:opacity-60 disabled:cursor-not-allowed
-                  rounded-none
+                  bg-gradient-to-b from-[#25D366] to-[#1DA34D] rounded-none shadow-none border-none
                 "
-                style={{
-                  background: isLoading
-                    ? '#25D366'
-                    : 'linear-gradient(45deg, #006D2F, #25D366)',
-                }}
               >
                 {isLoading ? (
                   <>
@@ -186,16 +197,31 @@ export default function Signup() {
               </button>
             </div>
 
-            <div className="flex items-center justify-center pt-2">
+            <div className="flex items-center justify-center pt-4">
               <Link
                 to="/auth/login"
                 id="signup-login-link"
-                className="text-label-md text-[#1B1B1B] opacity-40 hover:opacity-70 transition-opacity tracking-[0.08em]"
+                className="text-[10px] leading-[15px] font-normal tracking-[1px] text-[#9CA3AF] uppercase hover:text-black transition-colors"
               >
                 ALREADY_HAVE_ACCESS? LOGIN →
               </Link>
             </div>
           </form>
+
+          {/* Footer Annotations */}
+          <div className="pt-[65px] flex items-center gap-[32px]">
+            <div className="space-y-[0px]">
+                <p className="text-[10px] leading-[15px] font-normal text-[#D1D5DB] tracking-[1px] uppercase">Secure By</p>
+                <p className="text-[12px] leading-[18px] font-bold text-[#0B0C10] font-dm-sans tracking-[-0.6px]">QUANTUM_VAULT</p>
+            </div>
+            <div className="space-y-[0px]">
+                <p className="text-[10px] leading-[15px] font-normal text-[#D1D5DB] tracking-[1px] uppercase">Status</p>
+                <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
+                    <p className="text-[10px] leading-[15px] font-bold text-[#0B0C10] tracking-[1px]">OPERATIONAL</p>
+                </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

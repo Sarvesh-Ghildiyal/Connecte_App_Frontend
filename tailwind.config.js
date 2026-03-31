@@ -78,6 +78,8 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        'dm-sans': ['DM Sans', 'sans-serif'],
+        'plus-jakarta': ['Plus Jakarta Sans', 'sans-serif'],
       },
     },
   },

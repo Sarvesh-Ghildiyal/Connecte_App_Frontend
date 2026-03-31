@@ -11,7 +11,7 @@ const ArrowRightIcon = () => (
 );
 
 const NodeIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
     <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
     <polyline points="7.5 19.79 7.5 14.6 3 12" />
@@ -60,38 +60,39 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white overflow-hidden font-sans">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-white font-plus-jakarta">
       {/* ── LEFT: Brand panel (Top-Left Branding) ────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[58%] flex-col justify-between p-12 bg-[#F9F9F9]">
-        <div className="space-y-4">
-          <p className="text-[10px] font-bold text-black/30 tracking-[0.2em] uppercase mb-4">
-            SYSTEM_VERSION_1.0.0
+      {/* ── LEFT: Brand panel (60% Split) ────────────────────────── */}
+      <div className="flex w-full lg:w-[60%] flex-col justify-between pt-[63px] px-[64px] pb-[64px] bg-[#F9F9F9] min-h-[400px] lg:min-h-screen">
+        <div className="space-y-[8.5px]">
+          <p className="text-[11px] leading-[16px] font-normal text-[#6B7280] tracking-[2.2px] uppercase">
+            SYSTEM_VERSION_1.0.4
           </p>
 
-          <div className="space-y-1">
-            <h1 className="text-[4rem] font-black text-black leading-none tracking-tighter uppercase">
+          <div className="space-y-[8.5px]">
+            <h1 className="text-[96px] font-bold text-[#0B0C10] leading-[96px] tracking-[-3.84px] uppercase font-dm-sans">
               CONNECTE.
             </h1>
-            {/* <p className="text-[11px] font-black text-black opacity-30 tracking-[0.4em] uppercase">
-                    THE PRECISION LEDGER
-                </p> */}
+            <p className="text-[12px] font-semibold text-[#0B0C10] leading-[18px] tracking-[4.8px] uppercase font-dm-sans">
+              THE PRECISION LEDGER
+            </p>
           </div>
         </div>
 
-        {/* <div className="flex items-center gap-3 text-black/20 uppercase font-black tracking-widest text-[9px]">
+        <div className="flex items-center gap-4 text-[#0B0C10] opacity-40 font-normal tracking-[1.1px] text-[11px] leading-[16px]">
           <NodeIcon />
           <span>ENCRYPTED_NODE_STABLE</span>
-        </div> */}
+        </div>
       </div>
 
-      {/* ── RIGHT: Access form panel ─────────────────────────────────────────── */}
-      <div className="w-full lg:w-[42%] flex flex-col justify-center px-16 lg:px-24 py-16 bg-white min-h-screen">
-        <div className="max-w-[420px] w-full mx-auto lg:mx-0">
-          <div className="mb-14 space-y-4">
-            <h2 className="text-[4.5rem] font-black text-black leading-[1] uppercase tracking-tight">
+      {/* ── RIGHT: Access form panel (40% Split) ─────────────────────────── */}
+      <div className="w-full lg:w-[40%] flex flex-col justify-center p-16 bg-white min-h-screen shadow-[-20px_0px_50px_rgba(11,12,16,0.02)]">
+        <div className="max-w-[400px] w-full mx-auto space-y-[39px]">
+          <div className="space-y-2">
+            <h2 className="text-[32px] font-bold text-[#0B0C10] leading-[48px] tracking-[-0.8px] uppercase">
               ACCESS SYSTEM
             </h2>
-            <p className="text-[14px] text-black/40 font-medium leading-relaxed">
+            <p className="text-[14px] leading-[21px] text-[#6B7280] font-normal">
               Enter credentials to synchronize with the core.
             </p>
           </div>
@@ -103,37 +104,37 @@ export default function Login() {
               </div>
             )}
 
-            <div className="space-y-3">
-              <label className="text-[11px] font-black text-black/30 tracking-[0.2em]">
-                Email
+            <div className="space-y-[8.5px]">
+              <label className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
+                IDENTIFIER
               </label>
               <input
                 type="email"
-                placeholder="business_name@email.com"
+                placeholder="ADMIN_USR_01"
                 value={email}
                 onChange={(e) => setEmail(e.target.value.toLowerCase())}
-                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
+                className="w-full h-[55px] bg-[#F3F3F3] border-none px-4 text-[16px] font-medium text-[#1B1B1B] outline-none transition-all focus:bg-[#EDEDED] placeholder:text-[#D1D5DB]"
               />
             </div>
 
-            <div className="space-y-3">
-              <label className="text-[11px] font-black text-black/30 tracking-[0.2em]">
-                Password
+            <div className="space-y-[8.5px]">
+              <label className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
+                SECURITY_KEY
               </label>
               <input
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
+                className="w-full h-[55px] bg-[#F3F3F3] border-none px-4 text-[16px] font-medium text-[#1B1B1B] outline-none transition-all focus:bg-[#EDEDED] placeholder:text-[#D1D5DB]"
               />
             </div>
 
-            <div className="pt-6">
+            <div className="pt-4">
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-20 bg-[#25D366] text-white flex items-center justify-center gap-4 text-[12px] font-black tracking-[0.2em] uppercase hover:bg-black transition-all disabled:opacity-20 shadow-none border-none"
+                className="w-full h-[61px] bg-gradient-to-b from-[#25D366] to-[#1DA34D] text-white flex items-center justify-center gap-3 text-[14px] leading-[21px] font-semibold font-dm-sans tracking-[1.4px] hover:opacity-90 transition-all disabled:opacity-20 shadow-none border-none"
               >
                 {isLoading ? 'INITIALIZING...' : (
                   <>INITIALIZE SESSION <ArrowRightIcon /></>
@@ -141,30 +142,30 @@ export default function Login() {
               </button>
             </div>
 
-            {/* <div className="flex items-center justify-between mt-4">
-              <button type="button" className="text-[10px] font-black tracking-widest text-black/40 uppercase hover:text-black transition-colors">
+            <div className="flex items-center justify-between pt-4">
+              <button type="button" className="text-[10px] leading-[15px] font-normal tracking-[1px] text-[#9CA3AF] uppercase hover:text-black transition-colors">
                 FORGOT_KEY?
               </button>
-              <button type="button" className="text-[10px] font-black tracking-widest text-black/40 uppercase hover:text-black transition-colors">
+              <button type="button" className="text-[10px] leading-[15px] font-normal tracking-[1px] text-[#9CA3AF] uppercase hover:text-black transition-colors">
                 REQUEST_ACCESS
               </button>
-            </div> */}
+            </div>
           </form>
 
-          {/* Metadata Footer */}
-          {/* <div className="mt-28 flex items-start gap-12 border-t border-[#F3F3F3] pt-12">
-            <div className="space-y-1">
-                <p className="text-[9px] font-black text-black/10 tracking-widest uppercase">Secure By</p>
-                <p className="text-[11px] font-black text-black tracking-[0.1em] uppercase">QUANTUM_VAULT</p>
+          {/* Footer Annotations */}
+          <div className="pt-[65px] flex items-center gap-[32px]">
+            <div className="space-y-[0px]">
+                <p className="text-[10px] leading-[15px] font-normal text-[#D1D5DB] tracking-[1px] uppercase">Secure By</p>
+                <p className="text-[12px] leading-[18px] font-bold text-[#0B0C10] font-dm-sans tracking-[-0.6px]">QUANTUM_VAULT</p>
             </div>
-            <div className="space-y-1">
-                <p className="text-[9px] font-black text-black/10 tracking-widest uppercase">Status</p>
-                <div className="flex items-center gap-1.5">
+            <div className="space-y-[0px]">
+                <p className="text-[10px] leading-[15px] font-normal text-[#D1D5DB] tracking-[1px] uppercase">Status</p>
+                <div className="flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
-                    <p className="text-[11px] font-black text-black tracking-[0.1em] uppercase">OPERATIONAL</p>
+                    <p className="text-[10px] leading-[15px] font-bold text-[#0B0C10] tracking-[1px]">OPERATIONAL</p>
                 </div>
             </div>
-          </div> */}
+          </div>
         </div>
       </div>
     </div>
