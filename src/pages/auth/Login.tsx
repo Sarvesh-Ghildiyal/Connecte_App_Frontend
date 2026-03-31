@@ -39,7 +39,7 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     if (!email.trim() || !password) {
-      setError('Credentials required.');
+      setError('credentials required.');
       return;
     }
 
@@ -53,7 +53,7 @@ export default function Login() {
       });
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
-      setError('Invalid credentials. Access denied by secure node.');
+      setError('invalid credentials. access denied by secure node.');
     } finally {
       setIsLoading(false);
     }
@@ -64,24 +64,24 @@ export default function Login() {
       {/* ── LEFT: Brand panel (Top-Left Branding) ────────────────────────── */}
       <div className="hidden lg:flex lg:w-[58%] flex-col justify-between p-12 bg-[#F9F9F9]">
         <div className="space-y-4">
-            <p className="text-[10px] font-bold text-black/30 tracking-[0.2em] uppercase mb-4">
-                SYSTEM_VERSION_1.0.4
-            </p>
-            
-            <div className="space-y-1">
-                <h1 className="text-[4rem] font-black text-black leading-none tracking-tighter uppercase">
-                    CONNECTE.
-                </h1>
-                <p className="text-[11px] font-black text-black opacity-30 tracking-[0.4em] uppercase">
+          <p className="text-[10px] font-bold text-black/30 tracking-[0.2em] uppercase mb-4">
+            SYSTEM_VERSION_1.0.0
+          </p>
+
+          <div className="space-y-1">
+            <h1 className="text-[4rem] font-black text-black leading-none tracking-tighter uppercase">
+              CONNECTE.
+            </h1>
+            {/* <p className="text-[11px] font-black text-black opacity-30 tracking-[0.4em] uppercase">
                     THE PRECISION LEDGER
-                </p>
-            </div>
+                </p> */}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 text-black/20 uppercase font-black tracking-widest text-[9px]">
+        {/* <div className="flex items-center gap-3 text-black/20 uppercase font-black tracking-widest text-[9px]">
           <NodeIcon />
           <span>ENCRYPTED_NODE_STABLE</span>
-        </div>
+        </div> */}
       </div>
 
       {/* ── RIGHT: Access form panel ─────────────────────────────────────────── */}
@@ -98,34 +98,34 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-10">
             {error && (
-               <div className="p-4 bg-black text-white text-[10px] font-black tracking-widest uppercase mb-6">
-                  Error: {error}
-               </div>
+              <div className="p-4 bg-black text-white text-[10px] font-black tracking-widest uppercase mb-6">
+                Error: {error}
+              </div>
             )}
 
             <div className="space-y-3">
-              <label className="text-[11px] font-black text-black/30 tracking-[0.2em] uppercase">
-                IDENTIFIER
+              <label className="text-[11px] font-black text-black/30 tracking-[0.2em]">
+                Email
               </label>
               <input
                 type="email"
-                placeholder="ADMIN_USR_01"
+                placeholder="business_name@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest uppercase text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
+                onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
               />
             </div>
 
             <div className="space-y-3">
-              <label className="text-[11px] font-black text-black/30 tracking-[0.2em] uppercase">
-                SECURITY_KEY
+              <label className="text-[11px] font-black text-black/30 tracking-[0.2em]">
+                Password
               </label>
               <input
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest uppercase text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
+                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
               />
             </div>
 
@@ -141,18 +141,18 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between mt-4">
+            {/* <div className="flex items-center justify-between mt-4">
               <button type="button" className="text-[10px] font-black tracking-widest text-black/40 uppercase hover:text-black transition-colors">
                 FORGOT_KEY?
               </button>
               <button type="button" className="text-[10px] font-black tracking-widest text-black/40 uppercase hover:text-black transition-colors">
                 REQUEST_ACCESS
               </button>
-            </div>
+            </div> */}
           </form>
 
           {/* Metadata Footer */}
-          <div className="mt-28 flex items-start gap-12 border-t border-[#F3F3F3] pt-12">
+          {/* <div className="mt-28 flex items-start gap-12 border-t border-[#F3F3F3] pt-12">
             <div className="space-y-1">
                 <p className="text-[9px] font-black text-black/10 tracking-widest uppercase">Secure By</p>
                 <p className="text-[11px] font-black text-black tracking-[0.1em] uppercase">QUANTUM_VAULT</p>
@@ -164,7 +164,7 @@ export default function Login() {
                     <p className="text-[11px] font-black text-black tracking-[0.1em] uppercase">OPERATIONAL</p>
                 </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

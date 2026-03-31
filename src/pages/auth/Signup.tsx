@@ -24,7 +24,7 @@ export default function Signup() {
     setError(null);
 
     if (!name.trim()) return setError('Name is required.');
-    if (!email.trim()) return setError('Email is required.');
+    if (!email.trim()) return setError('email is required.');
     if (!password || password.length < 8)
       return setError('Password must be at least 8 characters.');
 
@@ -106,12 +106,12 @@ export default function Signup() {
           <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-5">
             <div className="space-y-2">
               <label htmlFor="signup-name" className="text-label-md text-[#1B1B1B] tracking-[0.1em]">
-                DISPLAY_NAME
+                display name
               </label>
               <input
                 id="signup-name"
                 type="text"
-                placeholder="JOHN_DOE"
+                placeholder="john_doe"
                 autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -122,7 +122,7 @@ export default function Signup() {
 
             <div className="space-y-2">
               <label htmlFor="signup-email" className="text-label-md text-[#1B1B1B] tracking-[0.1em]">
-                IDENTIFIER
+                email
               </label>
               <input
                 id="signup-email"
@@ -130,7 +130,7 @@ export default function Signup() {
                 placeholder="user@domain.com"
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.toLowerCase())}
                 disabled={isLoading}
                 className={inputCls}
               />
@@ -138,7 +138,7 @@ export default function Signup() {
 
             <div className="space-y-2">
               <label htmlFor="signup-password" className="text-label-md text-[#1B1B1B] tracking-[0.1em]">
-                SECURITY_KEY
+                password
               </label>
               <input
                 id="signup-password"
