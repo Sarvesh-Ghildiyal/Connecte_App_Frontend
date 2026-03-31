@@ -17,16 +17,12 @@ import Templates from '@/pages/Templates';
 import CreateTemplate from '@/pages/templates/CreateTemplate';
 import Contacts from '@/pages/Contacts';
 import Chat from '@/pages/Chat';
+import Broadcast from '@/pages/Broadcast';
 
 // ─── DEV MODE: All routes open, no auth guard ────────────────────────────────
 // TODO: Re-enable ProtectedRoute / MetaProtectedRoute before production
 
-const PlaceholderPage = ({ name }: { name: string }) => (
-  <div className="flex flex-col items-center justify-center py-24 gap-2">
-    <p className="text-label-md text-foreground/40 tracking-widest">{name}</p>
-    <p className="text-sm text-muted-foreground">Coming soon</p>
-  </div>
-);
+
 
 export const router = createBrowserRouter([
   // Root
@@ -63,7 +59,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/broadcast',
-    element: <DashboardLayout><PlaceholderPage name="BROADCAST" /></DashboardLayout>,
+    element: <DashboardLayout><Broadcast /></DashboardLayout>,
   },
   {
     path: '/chat',

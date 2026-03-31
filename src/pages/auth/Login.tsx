@@ -1,250 +1,168 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowRight, Network } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { authService } from '@/services/auth';
 import { useAuthStore } from '@/store/authStore';
 
+// ── Icons ───────────────────────────────────────────────────────────────────
+const ArrowRightIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
+
+const NodeIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+    <polyline points="7.5 19.79 7.5 14.6 3 12" />
+    <polyline points="21 12 16.5 14.6 16.5 19.79" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /auth/login
-// Design reference: page1.png
-// Capitol Lean — "The Precision Ledger"
-// Split layout: left brand panel (60%) | right access form (40%)
+// Design reference: page1.png (Top-Left Precision)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
-  // ── Form state ──────────────────────────────────────────────────────────────
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Submit handler ───────────────────────────────────────────────────────────
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-
-    // Basic client-side validation
-    if (!email.trim()) {
-      setError('Identifier is required.');
-      return;
-    }
-    if (!password) {
-      setError('Security key is required.');
+    if (!email.trim() || !password) {
+      setError('Credentials required.');
       return;
     }
 
     setIsLoading(true);
-
     try {
       const response = await authService.login({ email: email.trim(), password });
-
-      // Store token in sessionStorage and update Zustand store
-      // User object derived from token — id and name will be updated via profile fetch if needed
       login(response.access_token, {
-        id: '',       // Populated from token sub claim or future /auth/me endpoint
+        id: '',
         email: email.trim(),
-        name: email.split('@')[0], // Fallback display name
+        name: email.split('@')[0],
       });
-
-      // Redirect to dashboard after successful login
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } } };
-      setError(
-        axiosError?.response?.data?.detail ?? 'Invalid credentials. Please try again.'
-      );
+      setError('Invalid credentials. Access denied by secure node.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F3F3F3]">
-      {/* ── LEFT: Brand panel ───────────────────────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[58%] flex-col justify-between bg-[#F3F3F3] p-12 relative overflow-hidden">
-        {/* Version tag */}
-        <p className="text-label-md text-[#1B1B1B] opacity-40 tracking-[0.12em]">
-          SYSTEM_VERSION_1.0.4
-        </p>
-
-        {/* Hero wordmark */}
-        <div className="flex flex-col gap-4">
-          <h1
-            className="font-black uppercase leading-none text-[#1B1B1B]"
-            style={{ fontSize: 'clamp(5rem, 10vw, 8rem)', letterSpacing: '-0.02em' }}
-          >
-            CONNECTE.
-          </h1>
-          <p className="text-label-md text-[#1B1B1B] tracking-[0.2em] opacity-60">
-            THE PRECISION LEDGER
-          </p>
+    <div className="flex min-h-screen bg-white overflow-hidden font-sans">
+      {/* ── LEFT: Brand panel (Top-Left Branding) ────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[58%] flex-col justify-between p-12 bg-[#F9F9F9]">
+        <div className="space-y-4">
+            <p className="text-[10px] font-bold text-black/30 tracking-[0.2em] uppercase mb-4">
+                SYSTEM_VERSION_1.0.4
+            </p>
+            
+            <div className="space-y-1">
+                <h1 className="text-[4rem] font-black text-black leading-none tracking-tighter uppercase">
+                    CONNECTE.
+                </h1>
+                <p className="text-[11px] font-black text-black opacity-30 tracking-[0.4em] uppercase">
+                    THE PRECISION LEDGER
+                </p>
+            </div>
         </div>
 
-        {/* Bottom node indicator */}
-        <div className="flex items-center gap-3 text-[#1B1B1B] opacity-40">
-          <Network size={18} />
-          <span className="text-label-md tracking-[0.1em]">ENCRYPTED_NODE_STABLE</span>
+        <div className="flex items-center gap-3 text-black/20 uppercase font-black tracking-widest text-[9px]">
+          <NodeIcon />
+          <span>ENCRYPTED_NODE_STABLE</span>
         </div>
       </div>
 
       {/* ── RIGHT: Access form panel ─────────────────────────────────────────── */}
-      <div className="w-full lg:w-[42%] flex flex-col justify-center px-12 py-16 bg-white min-h-screen">
-        <div className="max-w-sm w-full mx-auto">
-          {/* Form header */}
-          <div className="mb-10">
-            <h2 className="text-headline-lg text-[#1B1B1B] mb-2">ACCESS SYSTEM</h2>
-            <p className="text-sm text-[#1B1B1B] opacity-50">
+      <div className="w-full lg:w-[42%] flex flex-col justify-center px-16 lg:px-24 py-16 bg-white min-h-screen">
+        <div className="max-w-[420px] w-full mx-auto lg:mx-0">
+          <div className="mb-14 space-y-4">
+            <h2 className="text-[4.5rem] font-black text-black leading-[1] uppercase tracking-tight">
+              ACCESS SYSTEM
+            </h2>
+            <p className="text-[14px] text-black/40 font-medium leading-relaxed">
               Enter credentials to synchronize with the core.
             </p>
           </div>
 
-          {/* Error state */}
-          {error && (
-            <div
-              id="login-error-banner"
-              role="alert"
-              className="mb-6 px-4 py-3 bg-red-50 border-l-2 border-red-500 text-sm text-red-700"
-            >
-              {error}
-            </div>
-          )}
+          <form onSubmit={handleSubmit} className="space-y-10">
+            {error && (
+               <div className="p-4 bg-black text-white text-[10px] font-black tracking-widest uppercase mb-6">
+                  Error: {error}
+               </div>
+            )}
 
-          {/* Form */}
-          <form id="login-form" onSubmit={handleSubmit} noValidate className="space-y-6">
-            {/* Email / Identifier */}
-            <div className="space-y-2">
-              <label
-                htmlFor="login-email"
-                className="text-label-md text-[#1B1B1B] tracking-[0.1em]"
-              >
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-black/30 tracking-[0.2em] uppercase">
                 IDENTIFIER
               </label>
               <input
-                id="login-email"
                 type="email"
-                autoComplete="email"
                 placeholder="ADMIN_USR_01"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-                className="
-                  w-full h-14 px-4
-                  bg-[#E2E2E2] border-0 border-b-2 border-transparent
-                  text-[#1B1B1B] placeholder:text-[#1B1B1B]/30 text-sm font-medium
-                  transition-all outline-none
-                  focus:border-b-[#006D2F] focus:bg-[#EBEBEB]
-                  disabled:opacity-50
-                  rounded-none
-                "
+                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest uppercase text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
               />
             </div>
 
-            {/* Password / Security key */}
-            <div className="space-y-2">
-              <label
-                htmlFor="login-password"
-                className="text-label-md text-[#1B1B1B] tracking-[0.1em]"
-              >
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-black/30 tracking-[0.2em] uppercase">
                 SECURITY_KEY
               </label>
               <input
-                id="login-password"
                 type="password"
-                autoComplete="current-password"
-                placeholder="••••••••••"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                className="
-                  w-full h-14 px-4
-                  bg-[#E2E2E2] border-0 border-b-2 border-transparent
-                  text-[#1B1B1B] placeholder:text-[#1B1B1B]/30 text-sm font-medium
-                  transition-all outline-none
-                  focus:border-b-[#006D2F] focus:bg-[#EBEBEB]
-                  disabled:opacity-50
-                  rounded-none
-                "
+                className="w-full h-16 bg-[#F3F3F3] border-none px-6 text-[12px] font-black tracking-widest uppercase text-black outline-none transition-all focus:bg-[#EDEDED] placeholder:text-black/10"
               />
             </div>
 
-            {/* CTA */}
-            <div className="pt-4">
+            <div className="pt-6">
               <button
-                id="login-submit-btn"
                 type="submit"
                 disabled={isLoading}
-                className="
-                  w-full h-14 flex items-center justify-center gap-3
-                  text-white font-semibold text-sm tracking-[0.1em] uppercase
-                  transition-all
-                  disabled:opacity-60 disabled:cursor-not-allowed
-                  rounded-none
-                "
-                style={{
-                  background: isLoading
-                    ? '#25D366'
-                    : 'linear-gradient(45deg, #006D2F, #25D366)',
-                }}
+                className="w-full h-20 bg-[#25D366] text-white flex items-center justify-center gap-4 text-[12px] font-black tracking-[0.2em] uppercase hover:bg-black transition-all disabled:opacity-20 shadow-none border-none"
               >
-                {isLoading ? (
-                  <>
-                    <span
-                      className="w-4 h-4 border-2 border-white border-t-transparent animate-spin"
-                      style={{ borderRadius: '50%' }}
-                    />
-                    INITIALIZING...
-                  </>
-                ) : (
-                  <>
-                    INITIALIZE SESSION
-                    <ArrowRight size={16} />
-                  </>
+                {isLoading ? 'INITIALIZING...' : (
+                  <>INITIALIZE SESSION <ArrowRightIcon /></>
                 )}
               </button>
             </div>
 
-            {/* Footer links */}
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                id="login-forgot-btn"
-                className="text-label-md text-[#1B1B1B] opacity-40 hover:opacity-70 transition-opacity tracking-[0.08em]"
-              >
+            <div className="flex items-center justify-between mt-4">
+              <button type="button" className="text-[10px] font-black tracking-widest text-black/40 uppercase hover:text-black transition-colors">
                 FORGOT_KEY?
               </button>
-              <Link
-                to="/auth/signup"
-                id="login-signup-link"
-                className="text-label-md text-[#1B1B1B] opacity-40 hover:opacity-70 transition-opacity tracking-[0.08em]"
-              >
+              <button type="button" className="text-[10px] font-black tracking-widest text-black/40 uppercase hover:text-black transition-colors">
                 REQUEST_ACCESS
-              </Link>
+              </button>
             </div>
           </form>
 
-          {/* Bottom system info */}
-          <div className="mt-20 flex items-start gap-12">
-            <div>
-              <p className="text-[10px] text-[#1B1B1B]/30 tracking-widest uppercase mb-0.5">
-                Secure By
-              </p>
-              <p className="text-label-md text-[#1B1B1B] tracking-[0.08em]">
-                QUANTUM_VAULT
-              </p>
+          {/* Metadata Footer */}
+          <div className="mt-28 flex items-start gap-12 border-t border-[#F3F3F3] pt-12">
+            <div className="space-y-1">
+                <p className="text-[9px] font-black text-black/10 tracking-widest uppercase">Secure By</p>
+                <p className="text-[11px] font-black text-black tracking-[0.1em] uppercase">QUANTUM_VAULT</p>
             </div>
-            <div>
-              <p className="text-[10px] text-[#1B1B1B]/30 tracking-widest uppercase mb-0.5">
-                Status
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-[#25D366] rounded-full inline-block" />
-                <p className="text-label-md text-[#1B1B1B] tracking-[0.08em]">
-                  OPERATIONAL
-                </p>
-              </div>
+            <div className="space-y-1">
+                <p className="text-[9px] font-black text-black/10 tracking-widest uppercase">Status</p>
+                <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
+                    <p className="text-[11px] font-black text-black tracking-[0.1em] uppercase">OPERATIONAL</p>
+                </div>
             </div>
           </div>
         </div>
