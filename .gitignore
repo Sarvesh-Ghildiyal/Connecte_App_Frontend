@@ -22,9 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-*.png
-CONNECTE_FRONTEND_PRD (1).md
-CLAUDE_IMPLEMENTATION_GUIDE.md
+
+# CONNECTE_FRONTEND_PRD (1).md
+# CLAUDE_IMPLEMENTATION_GUIDE.md
 
 # Environment variables
 .env
