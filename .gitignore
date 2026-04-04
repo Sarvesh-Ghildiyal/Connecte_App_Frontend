@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 *.png
+.env
 CONNECTE_FRONTEND_PRD (1).md
 CLAUDE_IMPLEMENTATION_GUIDE.md
