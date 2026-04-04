@@ -25,3 +25,8 @@ dist-ssr
 *.png
 CONNECTE_FRONTEND_PRD (1).md
 CLAUDE_IMPLEMENTATION_GUIDE.md
+
+# Environment variables
+.env
+.env.local
+.env.*.local

@@ -26,7 +26,7 @@ export interface UserResponse {
 export const authService = {
   signup: async (data: SignupRequest) => {
     const response = await api.post<{ message: string; user: UserResponse }>(
-      '/auth/sign_up',
+      '/auth/signup',
       data
     );
     return response.data;

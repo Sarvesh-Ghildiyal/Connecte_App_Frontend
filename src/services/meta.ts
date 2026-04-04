@@ -1,18 +1,6 @@
 import { api } from './api';
 
-export interface MetaCallbackRequest {
-  code: string;
-  waba_id: string;
-  phone_number_id: string;
-  business_id: string;
-}
-
-export interface MetaCallbackResponse {
-  success: boolean;
-  message: string;
-  waba_id: string;
-  phone_number_id: string;
-}
+// ── TYPES: Meta Connection Status ───────────────────────────────────────────
 
 export interface MetaStatusResponse {
   is_connected: boolean;
@@ -21,12 +9,9 @@ export interface MetaStatusResponse {
   connected_at: string | null;
 }
 
-export const metaService = {
-  sendCallback: async (data: MetaCallbackRequest) => {
-    const response = await api.post<MetaCallbackResponse>('/meta/callback', data);
-    return response.data;
-  },
+// ── LOGIC: Meta Connection Status ───────────────────────────────────────────
 
+export const metaService = {
   getStatus: async () => {
     const response = await api.get<MetaStatusResponse>('/meta/status');
     return response.data;

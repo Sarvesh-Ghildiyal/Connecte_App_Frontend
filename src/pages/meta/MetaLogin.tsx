@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Shield, Zap } from 'lucide-react';
-import { metaService } from '@/services/meta';
-import { useAuthStore } from '@/store/authStore';
+import { metaSignupService } from '@/services/metaSignup';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /meta/login
@@ -21,43 +20,110 @@ declare global {
 }
 
 const META_APP_ID = import.meta.env.VITE_META_APP_ID ?? '';
-const META_CONFIG_ID = import.meta.env.VITE_META_CONFIG_ID ?? '';
 const META_API_VERSION = import.meta.env.VITE_META_API_VERSION ?? 'v21.0';
+const META_ES_CONFIG_ID = import.meta.env.VITE_META_ES_CONFIG_ID ?? '';
 
-interface EmbeddedSignupData {
-  phone_number_id: string;
-  waba_id: string;
-  business_id: string;
+interface MetaFlowData {
+  phone_number_id?: string;
+  waba_id?: string;
+  business_id?: string;
+  [key: string]: any;
 }
 
 type ConnectionStep = 'idle' | 'loading' | 'sdk_ready' | 'connecting' | 'success' | 'error';
 
 export default function MetaLogin() {
   const navigate = useNavigate();
-  const { setMetaConnection } = useAuthStore();
 
   const [step, setStep] = useState<ConnectionStep>('loading');
   const [error, setError] = useState<string | null>(null);
 
-  // Captured from WA_EMBEDDED_SIGNUP postMessage event
-  const embeddedDataRef = useRef<EmbeddedSignupData | null>(null);
+  // Refs to coordinate between the message event and the OAuth callback
+  const messageDataRef = useRef<MetaFlowData | null>(null);
+  const oauthCodeRef = useRef<string | null>(null);
+  const flowTriggeredRef = useRef(false);
+
+  // ── Logging Helper ────────────────────────────────────────────────────────
+  const logFlow = (stage: string, data: any) => {
+    console.log(`[META_FLOW][${stage}]`, {
+      timestamp: new Date().toISOString(),
+      ...data,
+    });
+  };
+
+  // ── Fire-and-Navigate Logic ────────────────────────────────────────────────
+  const triggerSetupAndNavigate = (params: {
+    status: 'success' | 'cancel' | 'error';
+    data?: any;
+    code?: string;
+    error?: any;
+  }) => {
+    if (flowTriggeredRef.current) return;
+    flowTriggeredRef.current = true;
+
+    logFlow('TRIGGER_SETUP', params);
+
+    // Call backend Setup API (Async / Fire-and-Forget)
+    metaSignupService.setup({
+      status: params.status,
+      code: params.code,
+      data: params.data,
+      error: params.error,
+    }).catch(err => {
+      logFlow('BACKEND_SETUP_ERROR', { error: err });
+    });
+
+    // Immediate navigation to callback page
+    navigate('/meta/callback', { 
+      replace: true, 
+      state: { ...params } 
+    });
+  };
 
   // ── Facebook SDK loader ────────────────────────────────────────────────────
   useEffect(() => {
-    // Listen for Meta postMessage events from the FB popup
     const handleMessage = (event: MessageEvent) => {
       if (!event.origin.endsWith('facebook.com')) return;
+      
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH_TYPE') {
-          embeddedDataRef.current = {
-            phone_number_id: data.data.phone_number_id,
-            waba_id: data.data.waba_id,
-            business_id: data.data.business_id,
-          };
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          logFlow('MESSAGE_RECEIVED', data);
+
+          if (data.event === 'CANCEL') {
+            triggerSetupAndNavigate({
+              status: 'cancel',
+              error: {
+                message: data.data?.error_message || 'User cancelled the flow',
+                code: data.data?.error_code,
+                session_id: data.data?.session_id,
+                timestamp: data.data?.timestamp,
+              }
+            });
+            return;
+          }
+
+          // Capture success data
+          messageDataRef.current = data.data;
+
+          // Check for extra fields (ad accounts, catalogs, etc.)
+          const knownFields = ['phone_number_id', 'waba_id', 'business_id'];
+          const extraFields = Object.keys(data.data || {}).filter(k => !knownFields.includes(k));
+          if (extraFields.length > 0) {
+            logFlow('EXTRA_FIELDS_DETECTED', { fields: extraFields });
+          }
+
+          // If we already have the OAuth code, we can finish
+          if (oauthCodeRef.current) {
+            triggerSetupAndNavigate({
+              status: 'success',
+              data: messageDataRef.current,
+              code: oauthCodeRef.current ?? undefined,
+            });
+          }
         }
-      } catch {
-        // Non-JSON message — ignore
+      } catch (err) {
+        logFlow('MESSAGE_PARSE_ERROR', { raw: event.data, error: err });
       }
     };
     window.addEventListener('message', handleMessage);
@@ -75,6 +141,7 @@ export default function MetaLogin() {
 
     // SDK init callback
     window.fbAsyncInit = () => {
+      logFlow('SDK_INIT_START', { appId: META_APP_ID, version: META_API_VERSION });
       window.FB.init({
         appId: META_APP_ID,
         autoLogAppEvents: true,
@@ -82,9 +149,9 @@ export default function MetaLogin() {
         version: META_API_VERSION,
       });
       setStep('sdk_ready');
+      logFlow('SDK_INIT_COMPLETE', {});
     };
 
-    // If SDK already loaded (hot reload)
     if (typeof window.FB !== 'undefined') {
       setStep('sdk_ready');
     }
@@ -103,55 +170,31 @@ export default function MetaLogin() {
 
     setStep('connecting');
     setError(null);
+    logFlow('LOGIN_LAUNCHED', { configId: META_ES_CONFIG_ID });
 
     window.FB.login(
-      async (response: { authResponse?: { code: string } }) => {
-        if (!response.authResponse?.code) {
-          setStep('sdk_ready');
-          setError('Meta authorization was cancelled or failed. Please try again.');
-          return;
-        }
+      (response: any) => {
+        logFlow('LOGIN_CALLBACK', response);
 
-        const code = response.authResponse.code;
-        const embedded = embeddedDataRef.current;
-
-        if (!embedded) {
-          setStep('sdk_ready');
-          setError(
-            'WhatsApp Business data not received. Please complete the Meta setup flow.'
-          );
-          return;
-        }
-
-        try {
-          const result = await metaService.sendCallback({
-            code,
-            waba_id: embedded.waba_id,
-            phone_number_id: embedded.phone_number_id,
-            business_id: embedded.business_id,
-          });
-
-          if (result.success) {
-            setMetaConnection({
-              waba_id: result.waba_id,
-              phone_number_id: result.phone_number_id,
+        if (response.authResponse?.code) {
+          oauthCodeRef.current = response.authResponse.code;
+          
+          // If we already have the message data, we can finish
+          if (messageDataRef.current) {
+            triggerSetupAndNavigate({
+              status: 'success',
+              data: messageDataRef.current,
+              code: oauthCodeRef.current ?? undefined,
             });
-            setStep('success');
-            setTimeout(() => navigate('/dashboard', { replace: true }), 1200);
-          } else {
-            throw new Error('Backend reported failure');
           }
-        } catch (err: unknown) {
-          const axiosError = err as { response?: { data?: { detail?: string } } };
-          setError(
-            axiosError?.response?.data?.detail ??
-              'Failed to connect WhatsApp Business. Please try again.'
-          );
-          setStep('sdk_ready');
+        } else {
+          // No code returned — likely a cancellation or error from the FB.login side
+          logFlow('LOGIN_NO_CODE', response);
+          // We wait for the 'CANCEL' message event to handle navigation uniformly
         }
       },
       {
-        config_id: META_CONFIG_ID,
+        config_id: META_ES_CONFIG_ID,
         response_type: 'code',
         override_default_response_type: true,
         extras: { setup: {} },
