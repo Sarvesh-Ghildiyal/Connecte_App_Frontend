@@ -1,5 +1,9 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 
+// Route Protection
+import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { GuestRoute } from '@/components/layout/GuestRoute';
+
 // Layout
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
@@ -18,19 +22,25 @@ import CreateTemplate from '@/pages/templates/CreateTemplate';
 import Contacts from '@/pages/Contacts';
 import Chat from '@/pages/Chat';
 import Broadcast from '@/pages/Broadcast';
+import Settings from '@/pages/Settings';
 
 // ─── DEV MODE: All routes open, no auth guard ────────────────────────────────
-// TODO: Re-enable ProtectedRoute / MetaProtectedRoute before production
+// TODO: Re-enable MetaProtectedRoute before production
 
-
+// Helper to wrap pages requiring basic auth
+const ProtectedAppPage = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <DashboardLayout>{children}</DashboardLayout>
+  </ProtectedRoute>
+);
 
 export const router = createBrowserRouter([
   // Root
-  { path: '/', element: <Navigate to="/auth/login" replace /> },
+  { path: '/', element: <Navigate to="/dashboard" replace /> },
 
   // ── Auth pages (no layout) ────────────────────────────────────────────────
-  { path: '/auth/login',  element: <Login /> },
-  { path: '/auth/signup', element: <Signup /> },
+  { path: '/auth/login',  element: <GuestRoute><Login /></GuestRoute> },
+  { path: '/auth/signup', element: <GuestRoute><Signup /></GuestRoute> },
 
   // ── Meta OAuth pages (no sidebar layout) ─────────────────────────────────
   { path: '/meta/login',    element: <MetaLogin /> },
@@ -38,32 +48,36 @@ export const router = createBrowserRouter([
 
   // ── App pages (inside DashboardLayout with sidebar) ───────────────────────
   {
-    element: <DashboardLayout><Navigate to="/dashboard" replace /></DashboardLayout>,
+    element: <ProtectedAppPage><Navigate to="/dashboard" replace /></ProtectedAppPage>,
     children: [],
   },
   {
     path: '/dashboard',
-    element: <DashboardLayout><Dashboard /></DashboardLayout>,
+    element: <ProtectedAppPage><Dashboard /></ProtectedAppPage>,
   },
   {
     path: '/templates',
-    element: <DashboardLayout><Templates /></DashboardLayout>,
+    element: <ProtectedAppPage><Templates /></ProtectedAppPage>,
   },
   {
     path: '/templates/create',
-    element: <DashboardLayout><CreateTemplate /></DashboardLayout>,
+    element: <ProtectedAppPage><CreateTemplate /></ProtectedAppPage>,
   },
   {
     path: '/contacts',
-    element: <DashboardLayout><Contacts /></DashboardLayout>,
+    element: <ProtectedAppPage><Contacts /></ProtectedAppPage>,
   },
   {
     path: '/broadcast',
-    element: <DashboardLayout><Broadcast /></DashboardLayout>,
+    element: <ProtectedAppPage><Broadcast /></ProtectedAppPage>,
   },
   {
     path: '/chat',
-    element: <DashboardLayout><Chat /></DashboardLayout>,
+    element: <ProtectedAppPage><Chat /></ProtectedAppPage>,
+  },
+  {
+    path: '/settings',
+    element: <ProtectedAppPage><Settings /></ProtectedAppPage>,
   },
 
   // Catch-all

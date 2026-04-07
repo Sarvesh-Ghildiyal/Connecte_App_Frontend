@@ -3,7 +3,6 @@ import { api } from './api';
 export interface SignupRequest {
   email: string;
   password: string;
-  name: string;
 }
 
 export interface LoginRequest {
@@ -19,7 +18,6 @@ export interface AuthResponse {
 export interface UserResponse {
   id: string;
   email: string;
-  name: string;
   created_at: string;
 }
 

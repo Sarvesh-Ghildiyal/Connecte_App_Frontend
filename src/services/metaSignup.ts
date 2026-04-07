@@ -17,15 +17,9 @@ export interface MetaCallbackResponse {
 }
 
 export interface MetaSetupRequest {
-  status: 'success' | 'cancel' | 'error';
-  code?: string;
-  data?: any; // Contains the full message event data (phone_num_id, waba_id, etc.)
-  error?: {
-    message: string;
-    code: string | number;
-    session_id?: string;
-    timestamp?: string;
-  };
+  event: string; // Typically 'FINISH', 'CANCEL', 'ERROR'
+  code?: string | null;
+  data?: any; // Contains the full event data from Meta SDK exactly as received
 }
 
 export interface MetaSetupResponse {

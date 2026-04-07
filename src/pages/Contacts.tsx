@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, UserPlus, Search, Bell, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, UserPlus, Search, Bell, HelpCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -10,6 +10,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import ImportSuccessModal from '@/components/contacts/ImportSuccessModal';
+import { contactService } from '@/services/contacts';
+import type { Contact } from '@/types';
+import { logger } from '@/utils/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /contacts  (page4.png)
@@ -24,8 +27,8 @@ import ImportSuccessModal from '@/components/contacts/ImportSuccessModal';
 //   4. Show ImportSuccessModal with stats
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Types ────────────────────────────────────────────────────────────────────
-interface Contact {
+// ── Parsed Result Type ────────────────────────────────────────────────────────
+interface ContactUI {
   id: string;
   name: string;
   initials: string;
@@ -33,40 +36,6 @@ interface Contact {
   phone: string;
   tags: { label: string; variant: 'solid' | 'green' | 'outline' }[];
 }
-
-// ── Dummy data (replaced by API later) ───────────────────────────────────────
-const DUMMY_CONTACTS: Contact[] = [
-  {
-    id: '1', name: 'Jared Sterling', initials: 'JS', updatedAt: 'Updated 2d ago',
-    phone: '+1 (555) 092-1184',
-    tags: [{ label: 'ENTERPRISE', variant: 'solid' }, { label: 'ACTIVE', variant: 'outline' }],
-  },
-  {
-    id: '2', name: 'Alena Mitchell', initials: 'AM', updatedAt: 'Updated 5d ago',
-    phone: '+44 20 7946 0128',
-    tags: [{ label: 'VIP', variant: 'green' }],
-  },
-  {
-    id: '3', name: 'Rohan Khanna', initials: 'RK', updatedAt: 'Updated 1d ago',
-    phone: '+91 98765 43210',
-    tags: [{ label: 'LEADS', variant: 'outline' }, { label: 'NEW', variant: 'outline' }],
-  },
-  {
-    id: '4', name: 'Sarah Lund', initials: 'SL', updatedAt: 'Updated 3d ago',
-    phone: '+45 32 45 67 89',
-    tags: [{ label: 'PARTNER', variant: 'solid' }],
-  },
-  {
-    id: '5', name: 'Marcus Chen', initials: 'MC', updatedAt: 'Updated 6h ago',
-    phone: '+1 (415) 555-0182',
-    tags: [{ label: 'ENTERPRISE', variant: 'solid' }, { label: 'VIP', variant: 'green' }],
-  },
-  {
-    id: '6', name: 'Priya Sharma', initials: 'PS', updatedAt: 'Updated 12h ago',
-    phone: '+91 99876 54321',
-    tags: [{ label: 'LEADS', variant: 'outline' }],
-  },
-];
 
 // ── CSV Parser ────────────────────────────────────────────────────────────────
 interface ParsedResult {
@@ -123,10 +92,66 @@ export default function Contacts() {
   const [currentPage, setCurrentPage] = useState(1);
   const [importResult, setImportResult] = useState<ParsedResult | null>(null);
   const [showModal, setShowModal] = useState(false);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [contacts, setContacts] = useState<ContactUI[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const totalContacts = 2841;
-  const activeNow     = 158;
-  const newToday      = 12;
+  const activeNow     = 0; // Will be dynamic later
+  const newToday      = 0;
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await contactService.getAll();
+        logger.info('CONTACTS_PAGE', 'Fetched contacts successfully', { count: response.contacts.length });
+        
+        const mapped: ContactUI[] = response.contacts.map((c: Contact) => {
+          const initials = c.name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+
+          return {
+            id: c.id,
+            name: c.name || 'Unknown',
+            initials: initials || '??',
+            updatedAt: c.created_at ? `Added ${new Date(c.created_at).toLocaleDateString()}` : 'Date unknown',
+            phone: c.phone_number,
+            tags: (c.tags || []).map(tag => ({
+              label: tag.toUpperCase(),
+              variant: 'outline' as const
+            }))
+          };
+        });
+
+        setContacts(mapped);
+        setTotalCount(response.total);
+      } catch (err: any) {
+        logger.error('CONTACTS_PAGE', 'Failed to fetch contacts', { error: err.message });
+        setError('Failed to load contact directory.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContacts();
+  }, []);
+
+  // Filter contacts based on search query
+  const filteredContacts = useMemo(() => {
+    if (!searchQuery.trim()) return contacts;
+    const lowerQuery = searchQuery.toLowerCase();
+    return contacts.filter(c => 
+      c.name.toLowerCase().includes(lowerQuery) || 
+      c.phone.toLowerCase().includes(lowerQuery)
+    );
+  }, [contacts, searchQuery]);
 
   // ── Row selection ─────────────────────────────────────────────────────────
   const toggleRow = (id: string) => {
@@ -138,9 +163,9 @@ export default function Contacts() {
   };
   const toggleAll = () => {
     setSelectedRows(prev =>
-      prev.size === DUMMY_CONTACTS.length
+      prev.size === filteredContacts.length
         ? new Set()
-        : new Set(DUMMY_CONTACTS.map(c => c.id))
+        : new Set(filteredContacts.map(c => c.id))
     );
   };
 
@@ -186,12 +211,14 @@ export default function Contacts() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-[#F3F3F3] px-3 h-9 w-48">
+          <div className="flex items-center gap-2 bg-[#F3F3F3] px-3 h-9 w-64">
             <Search size={13} className="text-[#1B1B1B]/40 shrink-0" />
             <input
               type="text"
-              placeholder="Search directory..."
-              className="bg-transparent text-sm text-[#1B1B1B] placeholder:text-[#1B1B1B]/40 outline-none w-full"
+              placeholder="Search directory by name or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent text-[11px] font-semibold tracking-wider text-[#1B1B1B] placeholder:text-[#1B1B1B]/40 outline-none w-full uppercase"
             />
           </div>
           <button className="w-8 h-8 flex items-center justify-center text-[#1B1B1B]/40 hover:text-[#1B1B1B]">
@@ -246,7 +273,7 @@ export default function Contacts() {
         <div className="grid grid-cols-4 gap-px bg-[#E8E8E8] border border-[#E8E8E8] mb-6">
           <div className="bg-white px-8 py-5">
             <p className="text-[9px] font-black tracking-[0.2em] text-[#1B1B1B]/40 uppercase mb-2">TOTAL CONTACTS</p>
-            <p className="text-3xl font-black text-[#1B1B1B]">{totalContacts.toLocaleString()}</p>
+            <p className="text-3xl font-black text-[#1B1B1B]">{totalCount.toLocaleString()}</p>
           </div>
           <div className="bg-white px-8 py-5">
             <p className="text-[9px] font-black tracking-[0.2em] text-[#1B1B1B]/40 uppercase mb-2">ACTIVE NOW</p>
@@ -274,7 +301,7 @@ export default function Contacts() {
                   <input
                     type="checkbox"
                     className="w-3.5 h-3.5 accent-[#1B1B1B] cursor-pointer"
-                    checked={selectedRows.size === DUMMY_CONTACTS.length}
+                    checked={filteredContacts.length > 0 && selectedRows.size === filteredContacts.length}
                     onChange={toggleAll}
                   />
                 </TableHead>
@@ -292,55 +319,90 @@ export default function Contacts() {
                 </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {DUMMY_CONTACTS.map(contact => (
-                <TableRow
-                  key={contact.id}
-                  className="border-b border-[#E8E8E8] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
-                >
-                  <TableCell className="pl-6">
-                    <input
-                      type="checkbox"
-                      className="w-3.5 h-3.5 accent-[#1B1B1B] cursor-pointer"
-                      checked={selectedRows.has(contact.id)}
-                      onChange={() => toggleRow(contact.id)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-[#1B1B1B] flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-black text-white tracking-wider">
-                          {contact.initials}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[#1B1B1B]">{contact.name}</p>
-                        <p className="text-[10px] text-[#1B1B1B]/30 font-medium">{contact.updatedAt}</p>
-                      </div>
+            {isLoading ? (
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={5} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 size={32} className="text-[#25D366] animate-spin" />
+                      <p className="text-[10px] font-black tracking-[0.25em] text-[#1B1B1B]/40 uppercase">
+                        FETCHING_CONTACT_NODES
+                      </p>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-[#1B1B1B] font-mono tracking-wide">
-                    {contact.phone}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {contact.tags.map(tag => (
-                        <TagChip key={tag.label} label={tag.label} variant={tag.variant} />
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right pr-6">
-                    {/* Operations — empty for now */}
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
+              </TableBody>
+            ) : error ? (
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={5} className="py-20 text-center">
+                    <p className="text-[10px] font-black tracking-[0.25em] text-red-500 uppercase">
+                      {error}
+                    </p>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            ) : (
+              <TableBody>
+                {filteredContacts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-20 text-center">
+                      <p className="text-[10px] font-black tracking-[0.25em] text-[#1B1B1B]/40 uppercase">
+                        NO_CONTACTS_FOUND
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredContacts.map(contact => (
+                    <TableRow
+                      key={contact.id}
+                      className="border-b border-[#E8E8E8] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
+                    >
+                      <TableCell className="pl-6">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 accent-[#1B1B1B] cursor-pointer"
+                          checked={selectedRows.has(contact.id)}
+                          onChange={() => toggleRow(contact.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-[#1B1B1B] flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-black text-white tracking-wider">
+                              {contact.initials}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-[#1B1B1B]">{contact.name}</p>
+                            <p className="text-[10px] text-[#1B1B1B]/30 font-medium">{contact.updatedAt}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-[#1B1B1B] font-mono tracking-wide">
+                        {contact.phone}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {contact.tags.map((tag, idx) => (
+                            <TagChip key={idx} label={tag.label} variant={tag.variant} />
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        {/* Operations — empty for now */}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            )}
           </Table>
 
           {/* Pagination row */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-[#E8E8E8]">
             <p className="text-[9px] font-black tracking-widest text-[#1B1B1B]/30 uppercase">
-              DISPLAYING 1–{DUMMY_CONTACTS.length} OF {totalContacts.toLocaleString()} NODES
+              DISPLAYING 1–{filteredContacts.length} OF {totalCount.toLocaleString()} NODES
             </p>
             <div className="flex items-center gap-1">
               <button

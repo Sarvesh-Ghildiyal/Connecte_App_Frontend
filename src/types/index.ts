@@ -14,7 +14,7 @@ export interface MetaData {
 
 // ─── Templates ─────────────────────────────────────────────────────────────
 
-export type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+export type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION' | 'TRANSACTIONAL';
 export type TemplateStatus = 'APPROVED' | 'PENDING' | 'REJECTED';
 export type TemplateComponentType = 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
 export type TemplateHeaderFormat = 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
@@ -28,13 +28,13 @@ export interface TemplateComponent {
 }
 
 export interface Template {
-  id: string;
+  id: string; // Meta API ID
   name: string;
   language: string;
   category: TemplateCategory;
   status: TemplateStatus;
   components: TemplateComponent[];
-  created_at: string;
+  last_synced_at: string; // ISO datetime
 }
 
 export interface CreateTemplateRequest {

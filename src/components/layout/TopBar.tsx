@@ -1,4 +1,4 @@
-import { Search, Bell, HelpCircle } from 'lucide-react';
+import { Search, Bell, HelpCircle, RefreshCw } from 'lucide-react';
 import React from 'react';
 
 interface TopBarProps {
@@ -7,12 +7,18 @@ interface TopBarProps {
   /** Optional right-side content (tabs, buttons, etc.) */
   rightSlot?: React.ReactNode;
   searchPlaceholder?: string;
+  /** Optional sync action */
+  onSync?: () => void;
+  /** Sync status */
+  isSyncing?: boolean;
 }
 
 export function TopBar({
   breadcrumb = [],
   rightSlot,
   searchPlaceholder = 'Search...',
+  onSync,
+  isSyncing = false,
 }: TopBarProps) {
   return (
     <header className="flex items-center justify-between h-14 px-8 bg-white border-b border-[#E8E8E8] shrink-0">
@@ -33,6 +39,16 @@ export function TopBar({
 
       {/* Right: search + icons */}
       <div className="flex items-center gap-3">
+        {onSync && (
+          <button 
+            onClick={onSync}
+            disabled={isSyncing}
+            className={`w-8 h-8 flex items-center justify-center text-[#1B1B1B]/50 hover:text-[#25D366] transition-all ${isSyncing ? 'cursor-not-allowed opacity-50' : ''}`}
+            title="Sync from Meta"
+          >
+            <RefreshCw size={18} className={isSyncing ? 'animate-spin text-[#25D366]' : ''} />
+          </button>
+        )}
         <div className="flex items-center gap-2 bg-[#F3F3F3] px-3 h-9 w-52">
           <Search size={14} className="text-[#1B1B1B]/40 shrink-0" />
           <input
@@ -44,7 +60,7 @@ export function TopBar({
         <button className="w-8 h-8 flex items-center justify-center text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors">
           <Bell size={18} />
         </button>
-        <button className="w-8 h-8 flex items-center justify-center text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors">
+        <button className="w-8 h-8 flex items-center justify-center text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors" title="Settings & Help">
           <HelpCircle size={18} />
         </button>
       </div>

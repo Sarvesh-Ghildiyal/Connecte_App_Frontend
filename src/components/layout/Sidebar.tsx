@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -7,8 +8,19 @@ import {
   Radio,
   MessageSquare,
   User,
-  Settings,
+  LogOut,
 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 // ─── Navigation items ──────────────────────────────────────────────────────
 const mainNav = [
@@ -20,12 +32,21 @@ const mainNav = [
 ];
 
 const bottomNav = [
-  { label: 'Profile',   to: '/profile',   icon: User },
-  { label: 'Settings',  to: '/settings',  icon: Settings },
+  { label: 'Profile',   to: '/settings',   icon: User },
 ];
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
 export function Sidebar() {
+  const { logout } = useAuthStore();
+  const navigate = useNavigate();
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+
+  const handleLogout = () => {
+    setIsLogoutOpen(false);
+    logout();
+    navigate('/auth/login', { replace: true });
+  };
+
   return (
     <aside className="flex flex-col w-52 min-h-screen bg-white border-r border-[#E8E8E8] shrink-0">
       {/* Brand */}
@@ -86,6 +107,44 @@ export function Sidebar() {
             )}
           </NavLink>
         ))}
+
+        <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+          <DialogTrigger asChild>
+            <button
+              className="flex w-full items-center gap-3 px-3 py-2.5 mt-0.5 text-sm font-medium text-[#1B1B1B]/60 hover:text-[#FF4D4D] hover:bg-[#FF4D4D]/10 transition-all text-left group"
+            >
+              <LogOut size={16} className="text-[#1B1B1B]/50 group-hover:text-[#FF4D4D]" />
+              Logout
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-[18px] font-bold text-[#0B0C10] tracking-[-0.5px] uppercase">
+                Confirm Logout
+              </DialogTitle>
+              <DialogDescription className="text-[14px] text-[#6B7280]">
+                Are you sure you want to end your session? You will need to sign in again to access the platform.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-4 gap-2 sm:gap-0">
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="px-6 py-2.5 bg-[#F3F3F3] text-[12px] font-semibold tracking-widest uppercase hover:bg-[#EDEDED] transition-all text-[#1B1B1B]"
+                >
+                  Cancel
+                </button>
+              </DialogClose>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="px-6 py-2.5 bg-[#FF4D4D] text-[12px] font-semibold tracking-widest uppercase hover:opacity-90 transition-all text-white"
+              >
+                Logout
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </nav>
     </aside>
   );
