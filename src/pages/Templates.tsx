@@ -127,29 +127,17 @@ export default function Templates() {
   return (
     <div className="flex flex-col h-full">
       {/* ── Top Bar ─────────────────────────────────────────────────────────── */}
-      <TopBar
-        breadcrumb={['Templates Management']}
+       <TopBar
+        title="Templates Management"
         searchPlaceholder="Search templates..."
         onSync={syncTemplates}
         isSyncing={isSyncing}
-        rightSlot={
-          <div className="flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                id={`templates-tab-${tab.key}`}
-                onClick={() => setActiveTab(tab.key)}
-                className={`text-xs font-semibold tracking-wider pb-0.5 transition-all ${
-                  activeTab === tab.key
-                    ? 'text-[#25D366] border-b-2 border-[#25D366]'
-                    : 'text-[#1B1B1B]/40 hover:text-[#1B1B1B]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        }
+        stats={tabs.map(tab => ({
+          label: tab.label,
+          isActive: activeTab === tab.key,
+          onClick: () => setActiveTab(tab.key),
+          color: activeTab === tab.key ? 'text-[#25D366]' : 'text-[#1B1B1B]/40'
+        }))}
       />
 
       <div className="flex-1 overflow-auto p-8">

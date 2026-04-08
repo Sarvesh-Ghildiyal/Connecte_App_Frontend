@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Upload, UserPlus, Search, Bell, HelpCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Upload, UserPlus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -9,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TopBar } from '@/components/layout/TopBar';
 import ImportSuccessModal from '@/components/contacts/ImportSuccessModal';
 import { contactService } from '@/services/contacts';
 import type { Contact } from '@/types';
@@ -34,7 +34,9 @@ interface ContactUI {
   initials: string;
   updatedAt: string;
   phone: string;
-  tags: { label: string; variant: 'solid' | 'green' | 'outline' }[];
+  createdAt: string;
+  optInStatus: string;
+  tags: { label: string; variant: 'outline' }[];
 }
 
 // ── CSV Parser ────────────────────────────────────────────────────────────────
@@ -76,16 +78,24 @@ function parseCsv(raw: string): ParsedResult {
 }
 
 // ── Tag chip component ────────────────────────────────────────────────────────
-function TagChip({ label, variant }: { label: string; variant: 'solid' | 'green' | 'outline' }) {
-  const base = 'inline-flex items-center px-2.5 py-0.5 text-[9px] font-black tracking-widest uppercase';
-  if (variant === 'green')   return <span className={`${base} bg-[#25D366] text-white`}>{label}</span>;
-  if (variant === 'solid')   return <span className={`${base} bg-[#1B1B1B] text-white`}>{label}</span>;
-  return <span className={`${base} border border-[#1B1B1B] text-[#1B1B1B]`}>{label}</span>;
+function TagChip({ label }: { label: string }) {
+  const base = 'inline-flex items-center px-3 py-1 text-[9px] font-black tracking-widest uppercase';
+  
+  // Decide style based on label content (matching page4.png)
+  let style = 'bg-[#F3F3F3] text-[#1B1B1B]'; // Default gray
+  if (['ENTERPRISE', 'PARTNER', 'URGENT'].includes(label.toUpperCase())) {
+    style = 'bg-[#1B1B1B] text-white';
+  } else if (['ACTIVE', 'NEW', 'LEADS'].includes(label.toUpperCase())) {
+    style = 'bg-[#F3F3F3] text-[#1B1B1B]';
+  } else if (['VIP', 'SUCCESS'].includes(label.toUpperCase())) {
+    style = 'bg-[#25D366] text-white';
+  }
+
+  return <span className={`${base} ${style}`}>{label}</span>;
 }
 
 // ── Page component ────────────────────────────────────────────────────────────
 export default function Contacts() {
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
@@ -98,50 +108,88 @@ export default function Contacts() {
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  const activeNow     = 0; // Will be dynamic later
-  const newToday      = 0;
+  // Derived: Unique tags from real data for filtration
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    contacts.forEach(c => c.tags.forEach(t => tags.add(t.label)));
+    return Array.from(tags).sort();
+  }, [contacts]);
+
+  const fetchContacts = async () => {
+    try {
+      if (contacts.length === 0) setIsLoading(true);
+      setError(null);
+      const response = await contactService.getAll();
+      logger.info('CONTACTS_PAGE', 'Fetched contacts successfully', { count: response.contacts.length });
+      
+      const mapped: ContactUI[] = response.contacts.map((c: Contact) => {
+        const initials = c.name
+          ? c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+          : '??';
+
+        return {
+          id: c.id,
+          name: c.name || 'Unknown',
+          initials: initials,
+          updatedAt: c.created_at ? `Added ${new Date(c.created_at).toLocaleDateString()}` : 'Date unknown',
+          phone: c.phone_number,
+          createdAt: c.created_at,
+          optInStatus: c.opt_in_status,
+          tags: (c.tags || []).map(tag => ({
+            label: tag.toUpperCase(),
+            variant: 'outline' as const
+          }))
+        };
+      });
+
+      setContacts(mapped);
+      setTotalCount(response.count || response.contacts.length);
+    } catch (err: any) {
+      logger.error('CONTACTS_PAGE', 'Failed to fetch contacts', { error: err.message });
+      setError('Failed to load contact directory.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        setIsLoading(true);
-        const response = await contactService.getAll();
-        logger.info('CONTACTS_PAGE', 'Fetched contacts successfully', { count: response.contacts.length });
-        
-        const mapped: ContactUI[] = response.contacts.map((c: Contact) => {
-          const initials = c.name
-            .split(' ')
-            .map(n => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
-
-          return {
-            id: c.id,
-            name: c.name || 'Unknown',
-            initials: initials || '??',
-            updatedAt: c.created_at ? `Added ${new Date(c.created_at).toLocaleDateString()}` : 'Date unknown',
-            phone: c.phone_number,
-            tags: (c.tags || []).map(tag => ({
-              label: tag.toUpperCase(),
-              variant: 'outline' as const
-            }))
-          };
-        });
-
-        setContacts(mapped);
-        setTotalCount(response.total);
-      } catch (err: any) {
-        logger.error('CONTACTS_PAGE', 'Failed to fetch contacts', { error: err.message });
-        setError('Failed to load contact directory.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchContacts();
   }, []);
+
+  const handleSync = async () => {
+    try {
+      setIsSyncing(true);
+      await fetchContacts();
+      logger.info('CONTACTS_PAGE', 'Manual refresh successful');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Calculate genuine metrics
+  const stats = useMemo(() => {
+    const total = totalCount;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    
+    const newTodayCount = contacts.filter(c => {
+      if (!c.createdAt) return false;
+      return new Date(c.createdAt).toISOString().split('T')[0] === todayStr;
+    }).length;
+
+    // "Active" defined as opted_in or active status
+    const activeCount = contacts.filter(c => 
+      ['active', 'opted_in'].includes((c.optInStatus || '').toLowerCase())
+    ).length;
+
+    return {
+      total,
+      newToday: newTodayCount,
+      active: activeCount
+    };
+  }, [contacts, totalCount]);
 
   // Filter contacts based on search query
   const filteredContacts = useMemo(() => {
@@ -195,55 +243,27 @@ export default function Contacts() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-
+    <div className="flex flex-col h-full bg-[#FBFBFB]">
       {/* ── TopBar ──────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between h-14 px-8 bg-white border-b border-[#E8E8E8] shrink-0">
-        <nav className="flex items-center gap-1 text-[11px] font-black tracking-widest text-[#1B1B1B]/40 uppercase">
-          <span
-            className="hover:text-[#1B1B1B] cursor-pointer transition-colors"
-            onClick={() => navigate('/dashboard')}
-          >
-            CONNECTE
-          </span>
-          <span className="mx-1 text-[#1B1B1B]/20">/</span>
-          <span className="text-[#1B1B1B]">DIRECTORY</span>
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-[#F3F3F3] px-3 h-9 w-64">
-            <Search size={13} className="text-[#1B1B1B]/40 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search directory by name or phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent text-[11px] font-semibold tracking-wider text-[#1B1B1B] placeholder:text-[#1B1B1B]/40 outline-none w-full uppercase"
-            />
-          </div>
-          <button className="w-8 h-8 flex items-center justify-center text-[#1B1B1B]/40 hover:text-[#1B1B1B]">
-            <Bell size={17} />
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center text-[#1B1B1B]/40 hover:text-[#1B1B1B]">
-            <HelpCircle size={17} />
-          </button>
-        </div>
-      </header>
+      <TopBar
+        breadcrumb={['CONNECTE', 'DIRECTORY']}
+        onSync={handleSync}
+        isSyncing={isSyncing}
+        searchPlaceholder="Search directory..."
+      />
 
       {/* ── Scrollable body ─────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-8 py-8">
+      <div className="flex-1 overflow-y-auto px-12 py-10">
 
-        {/* ── Page heading row ─────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <p className="text-[10px] font-black tracking-[0.25em] text-[#1B1B1B]/40 uppercase mb-1">
-              CENTRAL NODE
-            </p>
-            <h1 className="text-[3rem] font-black text-[#1B1B1B] leading-none tracking-tight uppercase">
-              DIRECTORY
+        {/* ── Page Header ─────────────────────────────────────────────────── */}
+        <div className="flex items-end justify-between mb-12">
+          <div className="space-y-2">
+            <h1 className="text-[4rem] font-black text-[#1B1B1B] leading-none tracking-tight uppercase">
+              CONTACTS
             </h1>
           </div>
-          <div className="flex items-center gap-3 mt-2">
+
+          <div className="flex items-center gap-3">
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -255,42 +275,43 @@ export default function Contacts() {
             <button
               id="import-csv-btn"
               onClick={handleImportClick}
-              className="flex items-center gap-2 h-11 px-6 border border-[#1B1B1B] text-[#1B1B1B] text-[11px] font-black tracking-widest uppercase hover:bg-[#F3F3F3] transition-colors"
+              className="flex items-center gap-2 h-12 px-8 border border-[#E8E8E8] bg-white text-[#1B1B1B] text-[11px] font-black tracking-widest uppercase hover:bg-[#F9F9F9] transition-all shadow-sm"
             >
               <Upload size={14} /> IMPORT CSV
             </button>
             <button
               id="add-contact-btn"
-              className="flex items-center gap-2 h-11 px-6 bg-[#1B1B1B] text-white text-[11px] font-black tracking-widest uppercase opacity-80 cursor-not-allowed"
-              disabled
+              className="flex items-center gap-2 h-12 px-8 bg-[#1B1B1B] text-white text-[11px] font-black tracking-widest uppercase hover:bg-black transition-all shadow-md"
+              onClick={() => {}}
             >
               <UserPlus size={14} /> ADD CONTACT
             </button>
           </div>
         </div>
 
-        {/* ── Stats row ────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-px bg-[#E8E8E8] border border-[#E8E8E8] mb-6">
-          <div className="bg-white px-8 py-5">
-            <p className="text-[9px] font-black tracking-[0.2em] text-[#1B1B1B]/40 uppercase mb-2">TOTAL CONTACTS</p>
-            <p className="text-3xl font-black text-[#1B1B1B]">{totalCount.toLocaleString()}</p>
+        {/* ── Stats Hero ──────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-4 gap-0 mb-12 border border-[#E8E8E8] bg-white divide-x divide-[#E8E8E8]">
+          <div className="p-8">
+            <p className="text-[10px] font-black text-[#1B1B1B]/30 tracking-widest uppercase mb-2">TOTAL CONTACTS</p>
+            <p className="text-4xl font-black text-[#1B1B1B] tracking-tight">{stats.total.toLocaleString()}</p>
           </div>
-          <div className="bg-white px-8 py-5">
-            <p className="text-[9px] font-black tracking-[0.2em] text-[#1B1B1B]/40 uppercase mb-2">ACTIVE NOW</p>
-            <p className="text-3xl font-black text-[#25D366]">{activeNow}</p>
+          <div className="p-8">
+            <p className="text-[10px] font-black text-[#1B1B1B]/30 tracking-widest uppercase mb-2">ACTIVE NOW</p>
+            <p className="text-4xl font-black text-[#25D366] tracking-tight">{stats.active.toLocaleString()}</p>
           </div>
-          <div className="bg-white px-8 py-5">
-            <p className="text-[9px] font-black tracking-[0.2em] text-[#1B1B1B]/40 uppercase mb-2">NEW TODAY</p>
-            <p className="text-3xl font-black text-[#1B1B1B]">{newToday}</p>
+          <div className="p-8">
+            <p className="text-[10px] font-black text-[#1B1B1B]/30 tracking-widest uppercase mb-2">NEW TODAY</p>
+            <p className="text-4xl font-black text-[#1B1B1B] tracking-tight">{stats.newToday.toLocaleString()}</p>
           </div>
-          <div className="bg-white px-8 py-5">
-            <p className="text-[9px] font-black tracking-[0.2em] text-[#1B1B1B]/40 uppercase mb-2">SYNC STATUS</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="w-2 h-2 bg-[#25D366] rounded-full" />
-              <p className="text-sm font-black text-[#1B1B1B] uppercase tracking-wider">OPERATIONAL</p>
+          <div className="p-8">
+            <p className="text-[10px] font-black text-[#1B1B1B]/30 tracking-widest uppercase mb-2">SYNC STATUS</p>
+            <div className="flex items-center gap-3 mt-2">
+              <div className="w-2 h-2 rounded-full bg-[#25D366]" />
+              <p className="text-sm font-black text-[#1B1B1B] tracking-widest uppercase">OPERATIONAL</p>
             </div>
           </div>
         </div>
+
 
         {/* ── Contacts Table ───────────────────────────────────────────────── */}
         <div className="bg-white border border-[#E8E8E8] mb-6">
@@ -326,7 +347,7 @@ export default function Contacts() {
                     <div className="flex flex-col items-center gap-3">
                       <Loader2 size={32} className="text-[#25D366] animate-spin" />
                       <p className="text-[10px] font-black tracking-[0.25em] text-[#1B1B1B]/40 uppercase">
-                        FETCHING_CONTACT_NODES
+                        FETCHING_DATA
                       </p>
                     </div>
                   </TableCell>
@@ -385,12 +406,15 @@ export default function Contacts() {
                       <TableCell>
                         <div className="flex items-center gap-2 flex-wrap">
                           {contact.tags.map((tag, idx) => (
-                            <TagChip key={idx} label={tag.label} variant={tag.variant} />
+                            <TagChip key={idx} label={tag.label} />
                           ))}
                         </div>
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        {/* Operations — empty for now */}
+                        {/* Operations placeholders matching screenshot */}
+                        <div className="flex justify-end gap-2 text-[#1B1B1B]/20">
+                          {/* We could add actual icons here later */}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -402,7 +426,7 @@ export default function Contacts() {
           {/* Pagination row */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-[#E8E8E8]">
             <p className="text-[9px] font-black tracking-widest text-[#1B1B1B]/30 uppercase">
-              DISPLAYING 1–{filteredContacts.length} OF {totalCount.toLocaleString()} NODES
+              DISPLAYING {filteredContacts.length} OF {totalCount.toLocaleString()} CONTACTS
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -435,32 +459,35 @@ export default function Contacts() {
         </div>
 
         {/* ── Bottom panels ────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-6 pb-8">
+        <div className={`grid ${availableTags.length > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-6 pb-8`}>
           {/* Quick Filters — dark card */}
-          <div className="bg-[#1B1B1B] p-8 relative overflow-hidden">
-            {/* Decorative gear in background */}
-            <div className="absolute right-4 bottom-4 opacity-5 text-white">
-              <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 15.5a3.5 3.5 0 0 1 0-7 3.5 3.5 0 0 1 0 7zm7.43-2.09c.04-.3.07-.61.07-.91s-.03-.62-.07-.93l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.07.62-.07.92 0 .3.03.61.07.91l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.21.07-.47-.12-.61l-2.01-1.58z"/>
-              </svg>
+          {availableTags.length > 0 && (
+            <div className="bg-[#1B1B1B] p-8 relative overflow-hidden">
+              {/* Decorative gear in background */}
+              <div className="absolute right-4 bottom-4 opacity-5 text-white">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 15.5a3.5 3.5 0 0 1 0-7 3.5 3.5 0 0 1 0 7zm7.43-2.09c.04-.3.07-.61.07-.91s-.03-.62-.07-.93l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.07.62-.07.92 0 .3.03.61.07.91l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.21.07-.47-.12-.61l-2.01-1.58z"/>
+                </svg>
+              </div>
+              <p className="text-[9px] font-black tracking-[0.25em] text-[#25D366] uppercase mb-4">
+                CONTACT_FILTERS
+              </p>
+              <h2 className="text-2xl font-black text-white uppercase leading-tight mb-6">
+                FILTER BY<br />CONTACT TAGS.
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {availableTags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setSearchQuery(tag)}
+                    className="px-4 py-2 border border-white/20 text-[9px] font-black tracking-widest text-white/60 uppercase hover:border-white/60 hover:text-white transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="text-[9px] font-black tracking-[0.25em] text-[#25D366] uppercase mb-4">
-              QUICK FILTERS
-            </p>
-            <h2 className="text-2xl font-black text-white uppercase leading-tight mb-6">
-              ORGANIZE YOUR<br />COMMUNICATIONS.
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {['VIP CLIENTS', 'PENDING BROADCAST', 'SUPPORT QUEUE', 'INACTIVE 30D'].map(filter => (
-                <button
-                  key={filter}
-                  className="px-4 py-2 border border-white/20 text-[9px] font-black tracking-widest text-white/60 uppercase hover:border-white/60 hover:text-white transition-colors"
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* System Notification — light card */}
           <div className="bg-white border border-[#E8E8E8] p-8">
@@ -468,14 +495,14 @@ export default function Contacts() {
               SYSTEM NOTIFICATION
             </p>
             <h2 className="text-lg font-bold text-[#1B1B1B] leading-snug mb-3">
-              Integrate your Meta Cloud API to automatically sync new leads from your business profile.
+              Unify your WhatsApp Business Account (WABA) and sync your Meta Cloud assets.
             </h2>
             <p className="text-xs text-[#1B1B1B]/50 leading-relaxed mb-6">
-              Direct synchronization ensures no data loss and real-time classification of incoming communication nodes.
+              Connect your Meta credentials to enable real-time template synchronization and high-performance contact broadcasts across the Connecte ecosystem.
             </p>
             <button className="flex items-center gap-3 group">
               <span className="text-[10px] font-black tracking-widest text-[#1B1B1B] uppercase group-hover:text-[#25D366] transition-colors">
-                CONFIGURE INTEGRATION
+                CONFIGURE META ACCOUNT
               </span>
               <div className="h-[2px] w-10 bg-gradient-to-r from-[#006D2F] to-[#25D366]" />
             </button>

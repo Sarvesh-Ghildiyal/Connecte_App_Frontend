@@ -51,6 +51,7 @@ export interface Contact {
   phone_number: string;
   name: string;
   tags: string[];
+  opt_in_status: string;
   created_at: string;
 }
 
