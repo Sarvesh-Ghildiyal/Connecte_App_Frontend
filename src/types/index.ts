@@ -124,10 +124,18 @@ export interface SendMessageRequest {
 
 // ─── Broadcast ─────────────────────────────────────────────────────────────
 
+export type TemplateParameterType = 'text' | 'currency' | 'date_time';
+
+export interface TemplateParameterInput {
+  index: number;
+  type: TemplateParameterType;
+  value: any;
+}
+
 export interface BroadcastRequest {
   template_id: string;
-  contact_ids: string[];
-  variables?: Record<string, string>;
+  parameters: TemplateParameterInput[];
+  tags: string[];
 }
 
 export interface BroadcastResponse {

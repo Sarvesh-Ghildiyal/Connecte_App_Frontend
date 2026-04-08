@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import { AlertTriangle, Terminal, CheckCircle2, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { Template } from '../Broadcast';
+import type { Template, TemplateCategory } from '@/types';
 
 interface Step4Props {
   template: Template;
   recipientCount: number;
-  variableMappings: Record<number, string>;
   onBack: () => void;
   onLaunch: () => void;
 }
+
+const RATES = {
+  MARKETING: 0.82,
+  UTILITY: 0.35,
+  AUTHENTICATION: 0.12,
+  TRANSACTIONAL: 0.35,
+};
 
 export function Step4Review({ template, recipientCount, onBack, onLaunch }: Step4Props) {
   const [confirmAudience, setConfirmAudience] = useState(false);
@@ -17,9 +23,7 @@ export function Step4Review({ template, recipientCount, onBack, onLaunch }: Step
 
   const isReady = confirmAudience && confirmIrreversible;
 
-  // Dummy rate based on category
-  const rate = template.category === 'MARKETING' ? 0.82 : template.category === 'UTILITY' ? 0.35 : 0.12;
-  const totalCost = recipientCount * rate;
+  const totalCost = recipientCount * (RATES[template.category as TemplateCategory] || 0.82);
 
   return (
     <div className="max-w-6xl mx-auto flex gap-12 pb-32">
@@ -40,7 +44,7 @@ export function Step4Review({ template, recipientCount, onBack, onLaunch }: Step
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-[#1B1B1B] uppercase tracking-tight">{template.name}</h3>
-                            <p className="text-[10px] font-bold text-[#1B1B1B]/30 tracking-widest uppercase mt-1">Last updated: Today at 09:42 AM</p>
+                            <p className="text-[10px] font-bold text-[#1B1B1B]/30 tracking-widest uppercase mt-1">Language: {template.language}</p>
                         </div>
                     </div>
                 </div>
@@ -50,7 +54,7 @@ export function Step4Review({ template, recipientCount, onBack, onLaunch }: Step
                 <div className="bg-white p-12 space-y-4">
                     <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Audience Size</p>
                     <p className="text-[4rem] font-black text-[#25D366] leading-none">{recipientCount.toLocaleString()}</p>
-                    <p className="text-[10px] font-black tracking-widest text-[#1B1B1B] uppercase">Verified Leads</p>
+                    <p className="text-[10px] font-black tracking-widest text-[#1B1B1B] uppercase">Matched Contacts</p>
                 </div>
                 <div className="bg-white p-12 space-y-4">
                     <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Estimated Cost</p>
@@ -90,7 +94,7 @@ export function Step4Review({ template, recipientCount, onBack, onLaunch }: Step
                     <div className="space-y-1">
                         <p className="text-[11px] font-black tracking-widest uppercase">Verify Audience</p>
                         <p className="text-[10px] text-white/30 font-medium leading-relaxed">
-                            I confirm that the list of {recipientCount.toLocaleString()} contacts is correct and contains no duplicates.
+                            I confirm that the targeted group is correct and aligned with our compliance policies.
                         </p>
                     </div>
                 </div>
@@ -125,7 +129,7 @@ export function Step4Review({ template, recipientCount, onBack, onLaunch }: Step
                 </button>
                 <button 
                   onClick={onBack}
-                  className="w-full text-center text-[10px] font-black tracking-[0.2em] text-white/30 hover:text-white uppercase py-4 transition-colors flex items-center justify-center gap-2"
+                  className="w-full text-center text-[10px] font-black tracking-[0.2em] text-white/30 hover:text-white uppercase py-4 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                     <Trash2 size={14} /> Back to Configuration
                 </button>
