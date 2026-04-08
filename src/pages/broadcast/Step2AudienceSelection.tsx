@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Search, Users, Tag, Loader2 } from 'lucide-react';
+import { Search, Tag, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Contact, TemplateCategory } from '@/types';

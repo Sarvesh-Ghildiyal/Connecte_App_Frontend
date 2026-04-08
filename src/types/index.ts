@@ -127,9 +127,10 @@ export interface SendMessageRequest {
 export type TemplateParameterType = 'text' | 'currency' | 'date_time';
 
 export interface TemplateParameterInput {
-  index: number;
   type: TemplateParameterType;
   value: any;
+  name?: string;  // The lowercase name (e.g., 'first_name'). Required for Named format.
+  index?: number; // Optional index for positional templates
 }
 
 export interface BroadcastRequest {

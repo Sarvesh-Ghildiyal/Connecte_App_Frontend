@@ -52,9 +52,24 @@ export default function Broadcast() {
     if (!selectedTemplate) return;
 
     try {
+      // Prepare parameters according to the backend requirements:
+      // 1. Separate named and positional
+      // 2. Positional must be ordered by index
+      // 3. Named must include the 'name' field
+      const positional = parameters
+        .filter(p => p.index !== undefined)
+        .sort((a, b) => (a.index || 0) - (b.index || 0))
+        .map(({ type, value }) => ({ type, value }));
+
+      const named = parameters
+        .filter(p => p.name !== undefined)
+        .map(({ type, value, name }) => ({ type, value, name }));
+
+      const finalParameters = [...positional, ...named];
+
       const payload = {
         template_id: selectedTemplate.id,
-        parameters,
+        parameters: finalParameters,
         tags: selectedTags
       };
 

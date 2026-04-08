@@ -16,36 +16,68 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
     return template.components.find(c => c.type === 'BODY')?.text || '';
   }, [template]);
 
-  const variableIndices = useMemo(() => {
-    const matches = Array.from(bodyText.matchAll(/\{\{(\d+)\}\}/g));
-    const indices = matches.map(m => parseInt(m[1]));
-    return Array.from(new Set(indices)).sort((a, b) => a - b);
+  // Extract all placeholders like {{1}} or {{first_name}}
+  const placeholders = useMemo(() => {
+    const matches = Array.from(bodyText.matchAll(/\{\{(.+?)\}\}/g));
+    const unique = Array.from(new Set(matches.map(m => m[1])));
+    
+    return unique.map(key => {
+      const isNumeric = /^\d+$/.test(key);
+      return {
+        key,
+        isNumeric,
+        index: isNumeric ? parseInt(key) : undefined,
+        name: isNumeric ? undefined : key
+      };
+    });
   }, [bodyText]);
 
-  const handleUpdateParam = (index: number, value: string) => {
-    const existing = parameters.find(p => p.index === index);
-    if (existing) {
-      onUpdateParameters(parameters.map(p => p.index === index ? { ...p, value } : p));
+  const handleUpdateParam = (key: string, value: string) => {
+    const placeholder = placeholders.find(p => p.key === key);
+    if (!placeholder) return;
+
+    let newParams = [...parameters];
+    const existingIndex = newParams.findIndex(p => 
+      placeholder.isNumeric ? (p.index === placeholder.index) : (p.name === placeholder.name)
+    );
+
+    const newParam: TemplateParameterInput = {
+      type: 'text',
+      value,
+      ...(placeholder.isNumeric ? { index: placeholder.index } : { name: placeholder.name })
+    };
+
+    if (existingIndex >= 0) {
+      newParams[existingIndex] = newParam;
     } else {
-      onUpdateParameters([...parameters, { index, type: 'text', value }]);
+      newParams.push(newParam);
     }
+    
+    onUpdateParameters(newParams);
   };
 
   const renderPreview = (text: string) => {
     let result = text;
-    variableIndices.forEach(idx => {
-       const param = parameters.find(p => p.index === idx);
-       const val = param?.value || `{{${idx}}}`;
-       result = result.replace(`{{${idx}}}`, `<span class="text-[#25D366] font-black">${val}</span>`);
+    placeholders.forEach(p => {
+       const param = parameters.find(param => 
+         p.isNumeric ? (param.index === p.index) : (param.name === p.name)
+       );
+       const val = param?.value || `{{${p.key}}}`;
+       // Simple escape for HTML
+       const displayVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+       result = result.replace(`{{${p.key}}}`, `<span class="text-[#25D366] font-black">${displayVal}</span>`);
     });
     return <p className="text-[13px] leading-relaxed text-[#1B1B1B]" dangerouslySetInnerHTML={{ __html: result }} />;
   };
 
-  const isComplete = variableIndices.every(idx => parameters.some(p => p.index === idx && p.value));
+  const isComplete = placeholders.every(p => 
+    parameters.some(param => 
+      (p.isNumeric ? param.index === p.index : param.name === p.name) && param.value
+    )
+  );
 
   return (
     <div className="max-w-6xl mx-auto flex gap-12 pb-32">
-      {/* Left: Configuration Form */}
       <div className="flex-1 space-y-12">
         <div className="space-y-2">
           <p className="text-[11px] font-bold tracking-[0.2em] text-[#25D366] uppercase">STEP 03 / 04</p>
@@ -60,14 +92,16 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
           <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Variable Mapping</p>
           
           <div className="space-y-8">
-            {variableIndices.map((index) => {
-               const param = parameters.find(p => p.index === index);
+            {placeholders.map((p) => {
+               const param = parameters.find(param => 
+                 p.isNumeric ? (param.index === p.index) : (param.name === p.name)
+               );
                const currentValue = param?.value || '';
                return (
-                 <div key={index} className="space-y-3">
+                 <div key={p.key} className="space-y-3">
                    <div className="flex items-center justify-between">
                       <p className="text-[10px] font-black tracking-widest text-[#1B1B1B]/40 uppercase">
-                        Placeholder <span className="text-[#1B1B1B]">{`{{${index}}}`}</span>
+                        Placeholder <span className="text-[#1B1B1B]">{`{{${p.key}}}`}</span>
                       </p>
                       {currentValue && <span className="text-[9px] font-black text-[#25D366] tracking-widest uppercase flex items-center gap-1">Defined <Type size={10}/></span>}
                    </div>
@@ -76,8 +110,8 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
                      <input 
                         type="text"
                         value={currentValue}
-                        onChange={(e) => handleUpdateParam(index, e.target.value)}
-                        placeholder="Enter static text or dynamic field reference..."
+                        onChange={(e) => handleUpdateParam(p.key, e.target.value)}
+                        placeholder={`Value for ${p.key}...`}
                         className="w-full h-14 bg-[#F3F3F3] border-none outline-none px-6 text-[11px] font-black tracking-widest text-[#1B1B1B] uppercase placeholder:text-[#1B1B1B]/20"
                      />
                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
@@ -87,7 +121,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
                  </div>
                );
             })}
-            {variableIndices.length === 0 && (
+            {placeholders.length === 0 && (
               <div className="p-8 bg-[#F3F3F3] text-center">
                 <p className="text-[10px] font-black text-[#1B1B1B]/30 uppercase tracking-widest">No variables detected in this template.</p>
               </div>
@@ -96,13 +130,10 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
         </div>
       </div>
 
-      {/* Right: Live Preview */}
       <div className="w-[450px] space-y-8">
          <p className="text-[11px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Live Message Preview</p>
          <div className="bg-white/50 border border-[#E8E8E8] p-12 flex items-center justify-center min-h-[600px] relative overflow-hidden group">
-            {/* Phone Frame */}
             <div className="w-[300px] bg-white shadow-2xl relative z-10 border-[10px] border-[#1B1B1B] rounded-[40px] overflow-hidden aspect-[9/18]">
-               {/* Status Bar */}
                <div className="h-6 bg-white px-6 flex justify-between items-center opacity-40">
                   <span className="text-[9px] font-bold">12:45</span>
                   <div className="flex gap-1.5 items-center">
@@ -110,7 +141,6 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
                      <User size={10} />
                   </div>
                </div>
-               {/* WhatsApp Header */}
                <div className="h-14 bg-[#075E54] flex items-center px-4 gap-3">
                   <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                      <Smartphone size={16} className="text-white" />
@@ -120,9 +150,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
                     <p className="text-[8px] text-white/60 uppercase">Online</p>
                   </div>
                </div>
-               {/* Chat Body */}
                <div className="flex-1 bg-[#E5DDD5] p-4 flex flex-col gap-4 overflow-y-auto h-[calc(100%-100px)]">
-                  {/* Message Bubble */}
                   <div className="bg-white p-4 shadow-sm relative self-start max-w-[90%]">
                      {renderPreview(bodyText)}
                      <div className="flex justify-end mt-2">
@@ -131,12 +159,10 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
                   </div>
                </div>
             </div>
-            {/* Background "Ghost" phone for depth */}
             <div className="absolute w-[300px] aspect-[9/18] bg-[#F3F3F3] rounded-[40px] rotate-6 scale-95 opacity-50 -z-0" />
          </div>
       </div>
 
-      {/* Footer Navigation */}
       <div className="fixed bottom-0 left-[240px] right-0 h-24 bg-white border-t border-[#E8E8E8] px-12 flex items-center justify-between z-10">
         <div className="flex items-center gap-12">
           <div className="space-y-1">
