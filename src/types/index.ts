@@ -49,10 +49,17 @@ export interface CreateTemplateRequest {
 export interface Contact {
   id: string;
   phone_number: string;
-  name: string;
+  name: string | null;
   tags: string[];
-  opt_in_status: string;
+  opted_in: boolean;
   created_at: string;
+}
+
+export interface ContactCreate {
+  phone_number: string;
+  name?: string | null;
+  tags?: string[];
+  opted_in?: boolean;
 }
 
 export interface ContactsResponse {

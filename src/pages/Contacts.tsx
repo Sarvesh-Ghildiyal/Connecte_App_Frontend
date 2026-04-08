@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import { TopBar } from '@/components/layout/TopBar';
 import ImportSuccessModal from '@/components/contacts/ImportSuccessModal';
+import AddContactModal from '@/components/contacts/AddContactModal';
 import { contactService } from '@/services/contacts';
 import type { Contact } from '@/types';
 import { logger } from '@/utils/logger';
@@ -109,6 +110,7 @@ export default function Contacts() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Derived: Unique tags from real data for filtration
   const availableTags = useMemo(() => {
@@ -136,7 +138,7 @@ export default function Contacts() {
           updatedAt: c.created_at ? `Added ${new Date(c.created_at).toLocaleDateString()}` : 'Date unknown',
           phone: c.phone_number,
           createdAt: c.created_at,
-          optInStatus: c.opt_in_status,
+          optInStatus: c.opted_in ? 'opted_in' : 'opted_out',
           tags: (c.tags || []).map(tag => ({
             label: tag.toUpperCase(),
             variant: 'outline' as const
@@ -170,7 +172,6 @@ export default function Contacts() {
 
   // Calculate genuine metrics
   const stats = useMemo(() => {
-    const total = totalCount;
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     
@@ -179,13 +180,10 @@ export default function Contacts() {
       return new Date(c.createdAt).toISOString().split('T')[0] === todayStr;
     }).length;
 
-    // "Active" defined as opted_in or active status
-    const activeCount = contacts.filter(c => 
-      ['active', 'opted_in'].includes((c.optInStatus || '').toLowerCase())
-    ).length;
+    const activeCount = contacts.filter(c => c.optInStatus === 'opted_in').length;
 
     return {
-      total,
+      total: totalCount,
       newToday: newTodayCount,
       active: activeCount
     };
@@ -275,14 +273,14 @@ export default function Contacts() {
             <button
               id="import-csv-btn"
               onClick={handleImportClick}
-              className="flex items-center gap-2 h-12 px-8 border border-[#E8E8E8] bg-white text-[#1B1B1B] text-[11px] font-black tracking-widest uppercase hover:bg-[#F9F9F9] transition-all shadow-sm"
+              className="flex items-center gap-2 h-12 px-8 border border-[#E8E8E8] bg-white text-[#1B1B1B] text-[11px] font-black tracking-widest uppercase hover:bg-[#F9F9F9] transition-all shadow-sm cursor-pointer"
             >
               <Upload size={14} /> IMPORT CSV
             </button>
             <button
               id="add-contact-btn"
-              className="flex items-center gap-2 h-12 px-8 bg-[#1B1B1B] text-white text-[11px] font-black tracking-widest uppercase hover:bg-black transition-all shadow-md"
-              onClick={() => {}}
+              className="flex items-center gap-2 h-12 px-8 bg-[#1B1B1B] text-white text-[11px] font-black tracking-widest uppercase hover:bg-black transition-all shadow-md cursor-pointer"
+              onClick={() => setIsAddModalOpen(true)}
             >
               <UserPlus size={14} /> ADD CONTACT
             </button>
@@ -410,12 +408,7 @@ export default function Contacts() {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right pr-6">
-                        {/* Operations placeholders matching screenshot */}
-                        <div className="flex justify-end gap-2 text-[#1B1B1B]/20">
-                          {/* We could add actual icons here later */}
-                        </div>
-                      </TableCell>
+                      <TableCell className="text-right pr-6" />
                     </TableRow>
                   ))
                 )}
@@ -520,6 +513,12 @@ export default function Contacts() {
           onImportAnother={handleImportAnother}
         />
       )}
+      {/* ── Add Contact Modal ────────────────────────────────────────────────── */}
+      <AddContactModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={fetchContacts}
+      />
     </div>
   );
 }

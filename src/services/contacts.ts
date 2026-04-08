@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Contact } from '@/types';
+import type { Contact, ContactCreate } from '@/types';
 
 export const contactService = {
   getAll: async (params?: { tag?: string }) => {
@@ -7,8 +7,11 @@ export const contactService = {
     return response.data;
   },
 
-  importContacts: async (contacts: any[]) => {
-    const response = await api.post<{ added: number; updated: number }>('/contacts/import', contacts);
+  createOrUpdate: async (contacts_data: ContactCreate | ContactCreate[]) => {
+    const response = await api.post<{ message: string; added: number; updated: number }>(
+      '/contacts/create',
+      contacts_data
+    );
     return response.data;
   },
 
