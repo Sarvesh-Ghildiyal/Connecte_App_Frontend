@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const isProd = import.meta.env.PROD;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (isProd ? '' : 'http://localhost:8000');
+
+if (isProd && !import.meta.env.VITE_API_BASE_URL) {
+  console.warn('VITE_API_BASE_URL is not defined in production environment.');
+}
 
 // Create axios instance
 export const api = axios.create({
@@ -29,11 +34,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear auth state
-      sessionStorage.removeItem('connecte_auth_token');
+      // Don't redirect if we're already on the login page or trying to login
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
 
-      // Redirect to login
-      window.location.href = '/auth/login';
+      if (!isLoginRequest) {
+        // Clear auth state
+        sessionStorage.removeItem('connecte_auth_token');
+
+        // Redirect to login
+        window.location.href = '/auth/login';
+      }
     }
     return Promise.reject(error);
   }

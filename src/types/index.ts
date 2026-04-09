@@ -14,7 +14,7 @@ export interface MetaData {
 
 // ─── Templates ─────────────────────────────────────────────────────────────
 
-export type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+export type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION' | 'TRANSACTIONAL';
 export type TemplateStatus = 'APPROVED' | 'PENDING' | 'REJECTED';
 export type TemplateComponentType = 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
 export type TemplateHeaderFormat = 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
@@ -28,13 +28,13 @@ export interface TemplateComponent {
 }
 
 export interface Template {
-  id: string;
+  id: string; // Meta API ID
   name: string;
   language: string;
   category: TemplateCategory;
   status: TemplateStatus;
   components: TemplateComponent[];
-  created_at: string;
+  last_synced_at: string; // ISO datetime
 }
 
 export interface CreateTemplateRequest {
@@ -49,9 +49,17 @@ export interface CreateTemplateRequest {
 export interface Contact {
   id: string;
   phone_number: string;
-  name: string;
+  name: string | null;
   tags: string[];
+  opted_in: boolean;
   created_at: string;
+}
+
+export interface ContactCreate {
+  phone_number: string;
+  name?: string | null;
+  tags?: string[];
+  opted_in?: boolean;
 }
 
 export interface ContactsResponse {
@@ -80,46 +88,56 @@ export interface BulkUploadResponse {
 // ─── Chat ───────────────────────────────────────────────────────────────────
 
 export type MessageType = 'text' | 'template';
-export type MessageStatus = 'sent' | 'delivered' | 'read';
+export type MessageStatus = 'accepted' | 'sent' | 'delivered' | 'read' | 'failed';
 export type MessageDirection = 'inbound' | 'outbound';
 
 export interface Message {
   id: string;
-  conversation_id: string;
-  from: string;
-  to: string;
-  type: MessageType;
-  text?: string;
-  timestamp: string;
-  status: MessageStatus;
+  conversation_id: string;       // = wa_id (e.g. "917017348970")
   direction: MessageDirection;
+  type: MessageType;
+  text: string | null;           // Message body (template name for outbound templates)
+  template_id: string | null;
+  template_name: string | null;
+  contact_name: string | null;   // WhatsApp profile name (inbound only)
+  context_message_id: string | null;
+  status: MessageStatus | null;  // null for inbound messages
+  error_code: number | null;
+  error_message: string | null;
+  timestamp: string;             // ISO 8601
 }
 
 export interface Conversation {
-  id: string;
+  id: string;                    // = wa_id (e.g. "917017348970")
   contact_name: string;
   contact_phone: string;
   last_message: string;
-  last_message_time: string;
+  last_message_time: string;     // ISO 8601
   unread_count: number;
 }
 
 export interface SendMessageRequest {
-  conversation_id: string;
-  recipient_phone: string;
-  type: MessageType;
-  text?: string;
-  template_name?: string;
-  language_code?: string;
-  variables?: string[];
+  wa_id: string;                       // Recipient WhatsApp ID
+  body: string;                        // Message text
+  preview_url?: boolean;               // Enable link preview (default false)
+  context_message_id?: string | null;  // Reply-to message ID
 }
 
 // ─── Broadcast ─────────────────────────────────────────────────────────────
 
+export type TemplateParameterType = 'text' | 'currency' | 'date_time';
+
+export interface TemplateParameterInput {
+  type: TemplateParameterType;
+  value: any;
+  name?: string;  // The lowercase name (e.g., 'first_name'). Required for Named format.
+  index?: number; // Optional index for positional templates
+}
+
 export interface BroadcastRequest {
   template_id: string;
-  contact_ids: string[];
-  variables?: Record<string, string>;
+  parameters: TemplateParameterInput[];
+  tags: string[];
 }
 
 export interface BroadcastResponse {

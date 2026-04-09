@@ -1,33 +1,83 @@
-import { Database, Calendar, User, Smartphone } from 'lucide-react';
-import type { Template } from '../Broadcast';
+import { useMemo } from 'react';
+import { Database, User, Smartphone, Type } from 'lucide-react';
+import type { Template, TemplateParameterInput } from '@/types';
 
 interface Step3Props {
   template: Template;
-  variableMappings: Record<number, string>;
-  onUpdateMappings: (m: Record<number, string>) => void;
+  parameters: TemplateParameterInput[];
+  onUpdateParameters: (p: TemplateParameterInput[]) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-export function Step3Configuration({ template, variableMappings, onUpdateMappings, onNext, onBack }: Step3Props) {
+export function Step3Configuration({ template, parameters, onUpdateParameters, onNext, onBack }: Step3Props) {
   
-  const handleMapVariable = (index: number, value: string) => {
-    onUpdateMappings({ ...variableMappings, [index]: value });
+  const bodyText = useMemo(() => {
+    return template.components.find(c => c.type === 'BODY')?.text || '';
+  }, [template]);
+
+  // Extract all placeholders like {{1}} or {{first_name}}
+  const placeholders = useMemo(() => {
+    const matches = Array.from(bodyText.matchAll(/\{\{(.+?)\}\}/g));
+    const unique = Array.from(new Set(matches.map(m => m[1])));
+    
+    return unique.map(key => {
+      const isNumeric = /^\d+$/.test(key);
+      return {
+        key,
+        isNumeric,
+        index: isNumeric ? parseInt(key) : undefined,
+        name: isNumeric ? undefined : key
+      };
+    });
+  }, [bodyText]);
+
+  const handleUpdateParam = (key: string, value: string) => {
+    const placeholder = placeholders.find(p => p.key === key);
+    if (!placeholder) return;
+
+    let newParams = [...parameters];
+    const existingIndex = newParams.findIndex(p => 
+      placeholder.isNumeric ? (p.index === placeholder.index) : (p.name === placeholder.name)
+    );
+
+    const newParam: TemplateParameterInput = {
+      type: 'text',
+      value,
+      ...(placeholder.isNumeric ? { index: placeholder.index } : { name: placeholder.name })
+    };
+
+    if (existingIndex >= 0) {
+      newParams[existingIndex] = newParam;
+    } else {
+      newParams.push(newParam);
+    }
+    
+    onUpdateParameters(newParams);
   };
 
-  // Helper to render message preview with variables highlighted
   const renderPreview = (text: string) => {
     let result = text;
-    for (let i = 1; i <= template.variablesCount; i++) {
-        const val = variableMappings[i] || `[Variable {{${i}}}]`;
-        result = result.replace(`{{${i}}}`, `<span class="text-[#25D366] font-black">${val}</span>`);
-    }
+    placeholders.forEach(p => {
+       const param = parameters.find(param => 
+         p.isNumeric ? (param.index === p.index) : (param.name === p.name)
+       );
+       const val = param?.value || `{{${p.key}}}`;
+       // Simple escape for HTML
+       const displayVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+       result = result.replace(`{{${p.key}}}`, `<span class="text-[#25D366] font-black">${displayVal}</span>`);
+    });
     return <p className="text-[13px] leading-relaxed text-[#1B1B1B]" dangerouslySetInnerHTML={{ __html: result }} />;
   };
 
+  const isComplete = placeholders.every(p => 
+    parameters.some(param => 
+      (p.isNumeric ? param.index === p.index : param.name === p.name) && param.value
+    )
+  );
+
   return (
     <div className="max-w-6xl mx-auto flex gap-12 pb-32">
-      {/* Left: Configuration Form */}
       <div className="flex-1 space-y-12">
         <div className="space-y-2">
           <p className="text-[11px] font-bold tracking-[0.2em] text-[#25D366] uppercase">STEP 03 / 04</p>
@@ -42,64 +92,48 @@ export function Step3Configuration({ template, variableMappings, onUpdateMapping
           <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Variable Mapping</p>
           
           <div className="space-y-8">
-            {Array.from({ length: template.variablesCount }).map((_, i) => {
-               const index = i + 1;
-               const currentMapping = variableMappings[index] || '';
+            {placeholders.map((p) => {
+               const param = parameters.find(param => 
+                 p.isNumeric ? (param.index === p.index) : (param.name === p.name)
+               );
+               const currentValue = param?.value || '';
                return (
-                 <div key={index} className="space-y-3">
+                 <div key={p.key} className="space-y-3">
                    <div className="flex items-center justify-between">
                       <p className="text-[10px] font-black tracking-widest text-[#1B1B1B]/40 uppercase">
-                        Placeholder <span className="text-[#1B1B1B]">{`{{${index}}}`}</span> / {index === 1 ? 'Recipient Name' : index === 2 ? 'Offer Percentage' : 'Expiry Date'}
+                        Placeholder <span className="text-[#1B1B1B]">{`{{${p.key}}}`}</span>
                       </p>
-                      {currentMapping && <span className="text-[9px] font-black text-[#25D366] tracking-widest uppercase flex items-center gap-1">Mapped <Database size={10}/></span>}
+                      {currentValue && <span className="text-[9px] font-black text-[#25D366] tracking-widest uppercase flex items-center gap-1">Defined <Type size={10}/></span>}
                    </div>
                    <div className="relative group">
-                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${currentMapping ? 'bg-[#25D366]' : 'bg-[#E8E8E8]'}`} />
+                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${currentValue ? 'bg-[#25D366]' : 'bg-[#E8E8E8]'}`} />
                      <input 
                         type="text"
-                        value={currentMapping}
-                        onChange={(e) => handleMapVariable(index, e.target.value)}
-                        placeholder="Type static text or select dynamic field..."
+                        value={currentValue}
+                        onChange={(e) => handleUpdateParam(p.key, e.target.value)}
+                        placeholder={`Value for ${p.key}...`}
                         className="w-full h-14 bg-[#F3F3F3] border-none outline-none px-6 text-[11px] font-black tracking-widest text-[#1B1B1B] uppercase placeholder:text-[#1B1B1B]/20"
-                        list={`dynamic-fields-${index}`}
                      />
-                     <datalist id={`dynamic-fields-${index}`}>
-                       <option value="Contact Name" />
-                       <option value="Phone Number" />
-                       <option value="First Name" />
-                       <option value="Last Order Date" />
-                     </datalist>
                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
-                        {index === 1 ? <User size={16}/> : index === 3 ? <Calendar size={16}/> : <Database size={16}/>}
+                        <Database size={16}/>
                      </div>
                    </div>
                  </div>
                );
             })}
-          </div>
-
-          <div className="space-y-6 pt-6">
-            <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Media Header</p>
-            <div className="p-8 border border-dashed border-[#E8E8E8] bg-white flex items-center gap-6">
-               <div className="w-12 h-12 bg-[#F3F3F3] flex items-center justify-center">
-                  <Database size={20} className="text-[#1B1B1B]/20" />
-               </div>
-               <div>
-                  <p className="text-[11px] font-black text-[#1B1B1B] tracking-widest uppercase">campaign_banner_v2.jpg</p>
-                  <p className="text-[9px] font-bold text-[#1B1B1B]/30 tracking-widest uppercase">Static Image Asset • 1.2MB</p>
-               </div>
-            </div>
+            {placeholders.length === 0 && (
+              <div className="p-8 bg-[#F3F3F3] text-center">
+                <p className="text-[10px] font-black text-[#1B1B1B]/30 uppercase tracking-widest">No variables detected in this template.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Right: Live Preview */}
       <div className="w-[450px] space-y-8">
          <p className="text-[11px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Live Message Preview</p>
          <div className="bg-white/50 border border-[#E8E8E8] p-12 flex items-center justify-center min-h-[600px] relative overflow-hidden group">
-            {/* Phone Frame */}
             <div className="w-[300px] bg-white shadow-2xl relative z-10 border-[10px] border-[#1B1B1B] rounded-[40px] overflow-hidden aspect-[9/18]">
-               {/* Status Bar */}
                <div className="h-6 bg-white px-6 flex justify-between items-center opacity-40">
                   <span className="text-[9px] font-bold">12:45</span>
                   <div className="flex gap-1.5 items-center">
@@ -107,7 +141,6 @@ export function Step3Configuration({ template, variableMappings, onUpdateMapping
                      <User size={10} />
                   </div>
                </div>
-               {/* WhatsApp Header */}
                <div className="h-14 bg-[#075E54] flex items-center px-4 gap-3">
                   <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                      <Smartphone size={16} className="text-white" />
@@ -117,32 +150,19 @@ export function Step3Configuration({ template, variableMappings, onUpdateMapping
                     <p className="text-[8px] text-white/60 uppercase">Online</p>
                   </div>
                </div>
-               {/* Chat Body */}
                <div className="flex-1 bg-[#E5DDD5] p-4 flex flex-col gap-4 overflow-y-auto h-[calc(100%-100px)]">
-                  {/* Message Bubble */}
                   <div className="bg-white p-4 shadow-sm relative self-start max-w-[90%]">
-                     <div className="aspect-video bg-[#F3F3F3] mb-3 flex items-center justify-center">
-                        <Database size={32} className="text-[#1B1B1B]/10" />
-                     </div>
-                     {renderPreview(template.bodyText)}
+                     {renderPreview(bodyText)}
                      <div className="flex justify-end mt-2">
                         <span className="text-[8px] opacity-40 uppercase">12:45 PM</span>
                      </div>
                   </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-2">
-                    <button className="bg-white h-10 w-full text-[11px] font-bold text-[#34B7F1] uppercase shadow-sm">SHOP NOW</button>
-                    <button className="bg-white h-10 w-full text-[11px] font-bold text-[#34B7F1] uppercase shadow-sm">UNSUBSCRIBE</button>
-                  </div>
                </div>
             </div>
-            {/* Background "Ghost" phone for depth */}
             <div className="absolute w-[300px] aspect-[9/18] bg-[#F3F3F3] rounded-[40px] rotate-6 scale-95 opacity-50 -z-0" />
          </div>
       </div>
 
-      {/* Footer Navigation */}
       <div className="fixed bottom-0 left-[240px] right-0 h-24 bg-white border-t border-[#E8E8E8] px-12 flex items-center justify-between z-10">
         <div className="flex items-center gap-12">
           <div className="space-y-1">
@@ -151,7 +171,7 @@ export function Step3Configuration({ template, variableMappings, onUpdateMapping
           </div>
           <div className="space-y-1">
              <p className="text-[9px] font-black tracking-widest text-[#1B1B1B]/30 uppercase">Payload Integrity</p>
-             <p className="text-lg font-black text-[#25D366] uppercase">98% VALID</p>
+             <p className="text-lg font-black text-[#25D366] uppercase">{isComplete ? '100% VALID' : 'ACTION REQUIRED'}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -160,10 +180,10 @@ export function Step3Configuration({ template, variableMappings, onUpdateMapping
           </button>
           <button
             onClick={onNext}
-            disabled={Object.keys(variableMappings).length < template.variablesCount}
+            disabled={!isComplete}
             className="h-12 px-12 bg-[#1B1B1B] text-white text-[11px] font-black tracking-[0.2em] uppercase hover:bg-[#25D366] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
           >
-            NEXT STEP: SCHEDULE
+            NEXT STEP: REVIEW
           </button>
         </div>
       </div>

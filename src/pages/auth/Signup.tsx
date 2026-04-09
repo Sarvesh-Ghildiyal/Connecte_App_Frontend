@@ -1,31 +1,24 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
 import { authService } from '@/services/auth';
 import { useAuthStore } from '@/store/authStore';
 
 // ── Icons ───────────────────────────────────────────────────────────────────
-const NodeIcon = () => (
-  <svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-    <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
-    <polyline points="7.5 19.79 7.5 14.6 3 12" />
-    <polyline points="21 12 16.5 14.6 16.5 19.79" />
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-    <line x1="12" y1="22.08" x2="12" y2="12" />
+const ArrowRightIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14M12 5l7 7-7 7" />
   </svg>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /auth/signup
-// Capitol Lean — mirrors Login layout
+// Design reference: page1.png (Mirrors Login style)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Signup() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,65 +28,60 @@ export default function Signup() {
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) return setError('Name is required.');
-    if (!email.trim()) return setError('email is required.');
-    if (!password || password.length < 8)
-      return setError('Password must be at least 8 characters.');
+    if (!email.trim() || !password) {
+      setError('credentials required.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('password must be at least 8 characters.');
+      return;
+    }
 
     setIsLoading(true);
-
     try {
-      await authService.signup({ name: name.trim(), email: email.trim(), password });
+      // 1. Create account
+      await authService.signup({ email: email.trim(), password });
 
-      // Auto-login after signup
-      const authRes = await authService.login({ email: email.trim(), password });
-      login(authRes.access_token, {
+      // 2. Auto-login
+      const response = await authService.login({ email: email.trim(), password });
+
+      login(response.access_token, {
         id: '',
         email: email.trim(),
-        name: name.trim(),
       });
 
       navigate('/dashboard', { replace: true });
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } } };
-      setError(axiosError?.response?.data?.detail ?? 'Registration failed. Please try again.');
+    } catch (err: any) {
+      if (err.response?.status === 400 || err.response?.status === 422) {
+        setError(err.response?.data?.detail || 'registration failed. check identifiers.');
+      } else {
+        setError('could not connect to the system. please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
-
-  const inputCls = `
-    w-full h-[55px] px-4
-    bg-[#F3F3F3] border-none
-    text-[16px] font-medium text-[#1B1B1B] placeholder:text-[#D1D5DB]
-    transition-all outline-none
-    focus:bg-[#EDEDED]
-    disabled:opacity-50
-    rounded-none
-  `;
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-white font-plus-jakarta">
       {/* ── LEFT: Brand panel (60% Split) ────────────────────────── */}
       <div className="flex w-full lg:w-[60%] flex-col justify-between pt-[63px] px-[64px] pb-[64px] bg-[#F9F9F9] min-h-[400px] lg:min-h-screen">
         <div className="space-y-[8.5px]">
-          <p className="text-[11px] leading-[16px] font-normal text-[#6B7280] tracking-[2.2px] uppercase">
-            SYSTEM_VERSION_1.0.4
-          </p>
-
           <div className="space-y-[8.5px]">
             <h1 className="text-[96px] font-bold text-[#0B0C10] leading-[96px] tracking-[-3.84px] uppercase font-dm-sans">
               CONNECTE.
             </h1>
             <p className="text-[12px] font-semibold text-[#0B0C10] leading-[18px] tracking-[4.8px] uppercase font-dm-sans">
-              THE PRECISION LEDGER
+              CONNECT-ENTERPRISE
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4 text-[#0B0C10] opacity-40 font-normal tracking-[1.1px] text-[11px] leading-[16px]">
-          <NodeIcon />
-          <span>ENCRYPTED_NODE_STABLE</span>
+          <p className="text-[11px] leading-[16px] font-normal text-[#6B7280] tracking-[2.2px] uppercase">
+            APPLICATION_VERSION_1.0.0
+          </p>
         </div>
       </div>
 
@@ -102,114 +90,79 @@ export default function Signup() {
         <div className="max-w-[400px] w-full mx-auto space-y-[39px]">
           <div className="space-y-2">
             <h2 className="text-[32px] font-bold text-[#0B0C10] leading-[48px] tracking-[-0.8px] uppercase">
-              REQUEST ACCESS
+              CREATE ACCOUNT
             </h2>
             <p className="text-[14px] leading-[21px] text-[#6B7280] font-normal">
-              Create credentials to initialize your account.
+              Enter email and password to initialize.
             </p>
           </div>
 
-          {error && (
-            <div
-              id="signup-error-banner"
-              role="alert"
-              className="mb-6 px-4 py-3 bg-red-50 border-l-2 border-red-500 text-sm text-red-700"
-            >
-              {error}
-            </div>
-          )}
-
-          <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-5">
-            <div className="space-y-[8.5px]">
-              <label htmlFor="signup-name" className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
-                display name
-              </label>
-              <input
-                id="signup-name"
-                type="text"
-                placeholder="john_doe"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={isLoading}
-                className={inputCls}
-              />
-            </div>
+          <form onSubmit={handleSubmit} noValidate className="space-y-10">
+            {error && (
+              <div className="p-4 bg-[#FF4D4D] text-white text-[12px] font-bold tracking-widest uppercase mb-6 shadow-[0px_4px_20px_rgba(255,77,77,0.2)]">
+                {error}
+              </div>
+            )}
 
             <div className="space-y-[8.5px]">
-              <label htmlFor="signup-email" className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
-                email
+              <label 
+                htmlFor="email"
+                className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase cursor-pointer"
+              >
+                EMAIL
               </label>
               <input
-                id="signup-email"
+                id="email"
+                name="email"
                 type="email"
-                placeholder="user@domain.com"
-                autoComplete="email"
+                placeholder="admin@gmail.com"
                 value={email}
+                autoComplete="email"
                 onChange={(e) => setEmail(e.target.value.toLowerCase())}
-                disabled={isLoading}
-                className={inputCls}
+                className="w-full h-[55px] bg-[#F3F3F3] border-none px-4 text-[16px] font-medium text-[#1B1B1B] outline-none transition-all focus:bg-[#EDEDED] placeholder:text-[#D1D5DB]"
               />
             </div>
 
             <div className="space-y-[8.5px]">
-              <label htmlFor="signup-password" className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase">
-                password
+              <label 
+                htmlFor="password"
+                className="text-[11px] leading-[16px] font-normal text-[#9CA3AF] tracking-[1.1px] uppercase cursor-pointer"
+              >
+                NEW PASSWORD
               </label>
               <input
-                id="signup-password"
+                id="password"
+                name="password"
                 type="password"
-                placeholder="Min. 8 characters"
-                autoComplete="new-password"
+                placeholder="••••••••"
                 value={password}
+                autoComplete="new-password"
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                className={inputCls}
+                className="w-full h-[55px] bg-[#F3F3F3] border-none px-4 text-[16px] font-medium text-[#1B1B1B] outline-none transition-all focus:bg-[#EDEDED] placeholder:text-[#D1D5DB]"
               />
             </div>
 
             <div className="pt-4">
               <button
-                id="signup-submit-btn"
                 type="submit"
                 disabled={isLoading}
-                className="
-                  w-full h-[61px] flex items-center justify-center gap-3
-                  text-white font-semibold text-[14px] leading-[21px] font-dm-sans tracking-[1.4px] uppercase
-                  transition-all disabled:opacity-60 disabled:cursor-not-allowed
-                  bg-gradient-to-b from-[#25D366] to-[#1DA34D] rounded-none shadow-none border-none
-                "
+                className="w-full h-[61px] bg-gradient-to-b from-[#25D366] to-[#1DA34D] text-white flex items-center justify-center gap-3 text-[14px] leading-[21px] font-semibold font-dm-sans tracking-[1.4px] hover:opacity-90 transition-all disabled:opacity-20 shadow-none border-none"
               >
-                {isLoading ? (
-                  <>
-                    <span
-                      className="w-4 h-4 border-2 border-white border-t-transparent animate-spin"
-                      style={{ borderRadius: '50%' }}
-                    />
-                    INITIALIZING...
-                  </>
-                ) : (
-                  <>
-                    CREATE_ACCOUNT
-                    <ArrowRight size={16} />
-                  </>
+                {isLoading ? 'INITIALIZING...' : (
+                  <>SIGN UP <ArrowRightIcon /></>
                 )}
               </button>
             </div>
 
             <div className="flex items-center justify-center pt-4">
-              <Link
-                to="/auth/login"
-                id="signup-login-link"
-                className="text-[10px] leading-[15px] font-normal tracking-[1px] text-[#9CA3AF] uppercase hover:text-black transition-colors"
-              >
-                ALREADY_HAVE_ACCESS? LOGIN →
+              <Link to="/auth/login" className="text-[10px] leading-[15px] font-normal tracking-[1px] text-[#9CA3AF] uppercase hover:text-black transition-colors">
+                ALREADY_HAVE_ACCESS? SIGN IN →
               </Link>
             </div>
           </form>
 
           {/* Footer Annotations */}
-          <div className="pt-[65px] flex items-center gap-[32px]">
+          {/* <div className="pt-[65px] flex items-center gap-[32px]">
             <div className="space-y-[0px]">
                 <p className="text-[10px] leading-[15px] font-normal text-[#D1D5DB] tracking-[1px] uppercase">Secure By</p>
                 <p className="text-[12px] leading-[18px] font-bold text-[#0B0C10] font-dm-sans tracking-[-0.6px]">QUANTUM_VAULT</p>
@@ -221,7 +174,7 @@ export default function Signup() {
                     <p className="text-[10px] leading-[15px] font-bold text-[#0B0C10] tracking-[1px]">OPERATIONAL</p>
                 </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

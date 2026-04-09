@@ -1,29 +1,22 @@
 import { api } from './api';
-import type { Contact, ContactsResponse, BulkUploadRequest, BulkUploadResponse } from '@/types';
+import type { Contact, ContactCreate } from '@/types';
 
 export const contactService = {
-  getAll: async (params?: { tag?: string; limit?: number; offset?: number }) => {
-    const response = await api.get<ContactsResponse>('/contacts', { params });
+  getAll: async (params?: { tag?: string }) => {
+    const response = await api.get<{ contacts: Contact[]; count: number }>('/contacts/all', { params });
     return response.data;
   },
 
-  bulkUpload: async (data: BulkUploadRequest) => {
-    const response = await api.post<BulkUploadResponse>('/contacts/bulk', data);
-    return response.data;
-  },
-
-  create: async (contact: Omit<Contact, 'id' | 'created_at'>) => {
-    const response = await api.post<Contact>('/contacts', contact);
-    return response.data;
-  },
-
-  update: async (id: string, data: Partial<Contact>) => {
-    const response = await api.put<Contact>(`/contacts/${id}`, data);
+  createOrUpdate: async (contacts_data: ContactCreate | ContactCreate[]) => {
+    const response = await api.post<{ message: string; added: number; updated: number }>(
+      '/contacts/create',
+      contacts_data
+    );
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await api.delete<{ success: boolean }>(`/contacts/${id}`);
+    const response = await api.delete(`/contacts/${id}`);
     return response.data;
   },
 };

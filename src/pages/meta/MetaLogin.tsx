@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Shield, Zap } from 'lucide-react';
-import { metaService } from '@/services/meta';
-import { useAuthStore } from '@/store/authStore';
+import { logger } from '@/utils/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /meta/login
@@ -21,43 +20,85 @@ declare global {
 }
 
 const META_APP_ID = import.meta.env.VITE_META_APP_ID ?? '';
-const META_CONFIG_ID = import.meta.env.VITE_META_CONFIG_ID ?? '';
 const META_API_VERSION = import.meta.env.VITE_META_API_VERSION ?? 'v21.0';
+const META_ES_CONFIG_ID = import.meta.env.VITE_META_ES_CONFIG_ID ?? '';
 
-interface EmbeddedSignupData {
-  phone_number_id: string;
-  waba_id: string;
-  business_id: string;
+interface MetaFlowData {
+  phone_number_id?: string;
+  waba_id?: string;
+  business_id?: string;
+  [key: string]: any;
 }
 
 type ConnectionStep = 'idle' | 'loading' | 'sdk_ready' | 'connecting' | 'success' | 'error';
 
 export default function MetaLogin() {
   const navigate = useNavigate();
-  const { setMetaConnection } = useAuthStore();
 
   const [step, setStep] = useState<ConnectionStep>('loading');
   const [error, setError] = useState<string | null>(null);
 
-  // Captured from WA_EMBEDDED_SIGNUP postMessage event
-  const embeddedDataRef = useRef<EmbeddedSignupData | null>(null);
+  // Refs to coordinate between the message event and the OAuth callback
+  const messageDataRef = useRef<MetaFlowData | null>(null);
+  const oauthCodeRef = useRef<string | null>(null);
+  const flowTriggeredRef = useRef(false);
+  // ── Route to Callback Logic ────────────────────────────────────────────────
+  const triggerSetupAndNavigate = (params: {
+    event: string;
+    data?: any;
+    code?: string | null;
+  }) => {
+    if (flowTriggeredRef.current) return;
+    flowTriggeredRef.current = true;
+
+    logger.debug('META_LOGIN', 'Handing off flow to callback page', params);
+
+    // Navigate to callback page, passing the exact payload
+    navigate('/meta/callback', {
+      replace: true,
+      state: { ...params }
+    });
+  };
 
   // ── Facebook SDK loader ────────────────────────────────────────────────────
   useEffect(() => {
-    // Listen for Meta postMessage events from the FB popup
     const handleMessage = (event: MessageEvent) => {
       if (!event.origin.endsWith('facebook.com')) return;
+      
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH_TYPE') {
-          embeddedDataRef.current = {
-            phone_number_id: data.data.phone_number_id,
-            waba_id: data.data.waba_id,
-            business_id: data.data.business_id,
-          };
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          logger.info('META_LOGIN', `Meta SDK message received: ${data.event}`, data);
+
+          if (data.event === 'CANCEL' || data.event === 'ERROR') {
+            triggerSetupAndNavigate({
+              event: data.event,
+              data: data.data,
+            });
+            return;
+          }
+
+          // Capture success data
+          messageDataRef.current = data.data;
+
+          // Check for extra fields (ad accounts, catalogs, etc.)
+          const knownFields = ['phone_number_id', 'waba_id', 'business_id'];
+          const extraFields = Object.keys(data.data || {}).filter(k => !knownFields.includes(k));
+          if (extraFields.length > 0) {
+            logger.warn('META_LOGIN', 'Extra fields detected in Meta message data', { fields: extraFields });
+          }
+
+          // If we already have the OAuth code, we can finish
+          if (oauthCodeRef.current !== null) {
+            triggerSetupAndNavigate({
+              event: data.event,
+              data: messageDataRef.current,
+              code: oauthCodeRef.current,
+            });
+          }
         }
-      } catch {
-        // Non-JSON message — ignore
+      } catch (err) {
+        logger.error('META_LOGIN', 'Failed to parse Meta SDK message', { raw: event.data, error: err });
       }
     };
     window.addEventListener('message', handleMessage);
@@ -75,6 +116,7 @@ export default function MetaLogin() {
 
     // SDK init callback
     window.fbAsyncInit = () => {
+      logger.info('META_LOGIN', 'Meta SDK initialization started', { appId: META_APP_ID, version: META_API_VERSION });
       window.FB.init({
         appId: META_APP_ID,
         autoLogAppEvents: true,
@@ -82,9 +124,9 @@ export default function MetaLogin() {
         version: META_API_VERSION,
       });
       setStep('sdk_ready');
+      logger.info('META_LOGIN', 'Meta SDK initialization completed');
     };
 
-    // If SDK already loaded (hot reload)
     if (typeof window.FB !== 'undefined') {
       setStep('sdk_ready');
     }
@@ -103,55 +145,32 @@ export default function MetaLogin() {
 
     setStep('connecting');
     setError(null);
+    logger.info('META_LOGIN', 'Launching WhatsApp signup popup', { configId: META_ES_CONFIG_ID });
 
     window.FB.login(
-      async (response: { authResponse?: { code: string } }) => {
-        if (!response.authResponse?.code) {
-          setStep('sdk_ready');
-          setError('Meta authorization was cancelled or failed. Please try again.');
-          return;
-        }
+      (response: any) => {
+        logger.debug('META_LOGIN', 'FB.login callback executed', response);
 
-        const code = response.authResponse.code;
-        const embedded = embeddedDataRef.current;
-
-        if (!embedded) {
-          setStep('sdk_ready');
-          setError(
-            'WhatsApp Business data not received. Please complete the Meta setup flow.'
-          );
-          return;
-        }
-
-        try {
-          const result = await metaService.sendCallback({
-            code,
-            waba_id: embedded.waba_id,
-            phone_number_id: embedded.phone_number_id,
-            business_id: embedded.business_id,
-          });
-
-          if (result.success) {
-            setMetaConnection({
-              waba_id: result.waba_id,
-              phone_number_id: result.phone_number_id,
+        if (response.authResponse?.code) {
+          oauthCodeRef.current = response.authResponse.code;
+          
+          // If we already have the message data, we can finish
+          if (messageDataRef.current) {
+            triggerSetupAndNavigate({
+              // When messageData exists, it should be a success event like FINISH
+              event: 'FINISH', 
+              data: messageDataRef.current,
+              code: oauthCodeRef.current,
             });
-            setStep('success');
-            setTimeout(() => navigate('/dashboard', { replace: true }), 1200);
-          } else {
-            throw new Error('Backend reported failure');
           }
-        } catch (err: unknown) {
-          const axiosError = err as { response?: { data?: { detail?: string } } };
-          setError(
-            axiosError?.response?.data?.detail ??
-              'Failed to connect WhatsApp Business. Please try again.'
-          );
-          setStep('sdk_ready');
+        } else {
+          // No code returned — likely a cancellation or error from the FB.login side
+          logger.warn('META_LOGIN', 'FB.login callback returned no auth code', response);
+          // We wait for the 'CANCEL' message event to handle navigation uniformly
         }
       },
       {
-        config_id: META_CONFIG_ID,
+        config_id: META_ES_CONFIG_ID,
         response_type: 'code',
         override_default_response_type: true,
         extras: { setup: {} },
@@ -168,20 +187,21 @@ export default function MetaLogin() {
       {/* ── LEFT: Dark precision panel ─────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-[#1B1B1B] p-12 relative overflow-hidden">
         {/* Geo coordinates */}
-        <div>
+        {/* <div>
           <p className="text-[10px] text-white/30 tracking-widest uppercase">
             LAT: 37.4848° N
           </p>
           <p className="text-[10px] text-white/30 tracking-widest uppercase">
             LON: 122.1484° W
           </p>
-        </div>
+        </div> */}
 
         {/* Brand lockup */}
-        <div className="flex items-center gap-3 absolute top-12 left-12">
-          <div className="w-8 h-8 bg-[#25D366] flex items-center justify-center">
-            <Zap size={16} className="text-black" />
-          </div>
+        <div 
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-3 absolute top-12 left-12 cursor-pointer hover:opacity-80 transition-opacity"
+        >
+          <img src="/connecte.svg" alt="Connecte Logo" className="w-10 h-10 object-contain" />
           <span className="text-white font-bold text-sm tracking-[0.15em] uppercase">
             CONNECTE
           </span>
@@ -194,15 +214,13 @@ export default function MetaLogin() {
               className="font-black uppercase text-white leading-none"
               style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', letterSpacing: '-0.02em' }}
             >
-              PRECISION
+              WHATSAPP
               <br />
-              <span className="text-[#25D366]">INTEGRATION.</span>
+              <span className="text-[#25D366]">EMBEDDED SIGNUP.</span>
             </h1>
           </div>
           <p className="text-white/50 text-sm leading-relaxed max-w-xs">
-            Direct server-to-server authorization.{' '}
-            Experience the power of Meta Cloud API without the latency of traditional web
-            pairing.
+            Connect your WhatsApp Business Account directly. Access the power of the WhatsApp Business Platform seamlessly without the friction of manual configuration.
           </p>
         </div>
 
@@ -215,9 +233,9 @@ export default function MetaLogin() {
         {/* Feature bullets */}
         <div className="flex flex-col gap-3">
           {[
-            'ENCRYPTED END-TO-END',
-            '99.9% API UPTIME',
-            'ZERO WEB DEPENDENCY',
+            'STREAMLINED ONBOARDING',
+            'SEAMLESS INTEGRATION',
+            'INSTANT CLOUD API ACCESS',
           ].map((f) => (
             <div key={f} className="flex items-center gap-3">
               <span className="w-2 h-2 bg-[#25D366]" />
@@ -244,14 +262,12 @@ export default function MetaLogin() {
               className="font-black uppercase text-[#1B1B1B] leading-none mb-4"
               style={{ fontSize: 'clamp(2rem, 4vw, 2.875rem)', letterSpacing: '-0.02em' }}
             >
-              AUTHORIZE META
+              CONNECT
               <br />
-              CLOUD API
+              WHATSAPP API
             </h2>
             <p className="text-sm text-[#1B1B1B]/60 leading-relaxed mb-10 max-w-sm">
-              Connect via Meta Cloud API. No WhatsApp Web or QR pairing required. This
-              direct integration ensures architectural stability and enterprise-grade
-              performance.
+              Link your Meta Business Profile and WhatsApp Business Account (WABA) using Embedded Signup. This ensures robust, enterprise-grade access for your business messaging.
             </p>
 
             {/* Error state */}
@@ -283,10 +299,10 @@ export default function MetaLogin() {
                   <Shield size={18} className="text-[#1B1B1B]/40 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-semibold text-[#1B1B1B] text-sm mb-1">
-                      DIRECT LINKAGE
+                      EMBEDDED SIGNUP FLOW
                     </p>
                     <p className="text-sm text-[#1B1B1B]/50 leading-relaxed">
-                      Authorized through Meta Business Manager infrastructure.
+                      Securely connects to your Meta Business Manager portfolio.
                     </p>
                   </div>
                 </div>
@@ -294,10 +310,10 @@ export default function MetaLogin() {
                   <Zap size={18} className="text-[#1B1B1B]/40 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-semibold text-[#1B1B1B] text-sm mb-1">
-                      INSTANT ACTIVATION
+                      WABA PROVISIONING
                     </p>
                     <p className="text-sm text-[#1B1B1B]/50 leading-relaxed">
-                      Average setup completion time: 45 seconds.
+                      Automatically configures your WhatsApp Business Account.
                     </p>
                   </div>
                 </div>
@@ -313,7 +329,7 @@ export default function MetaLogin() {
               className="
                 w-full h-14 flex items-center justify-center gap-3 mb-3
                 text-white font-semibold text-sm tracking-[0.1em] uppercase
-                transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                transition-all hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                 rounded-none
               "
               style={{
@@ -334,7 +350,7 @@ export default function MetaLogin() {
               )}
               {(step === 'sdk_ready' || step === 'error' || step === 'idle') && (
                 <>
-                  CONNECT WITH META
+                  CONNECT WHATSAPP
                   <ArrowRight size={16} />
                 </>
               )}
@@ -361,7 +377,7 @@ export default function MetaLogin() {
               className="
                 w-full h-14 flex items-center justify-center
                 bg-white text-[#1B1B1B] font-semibold text-sm tracking-[0.1em] uppercase
-                hover:bg-[#F3F3F3] transition-colors
+                hover:bg-[#F3F3F3] cursor-pointer transition-colors
                 rounded-none
               "
               onClick={() =>
@@ -371,7 +387,7 @@ export default function MetaLogin() {
                 )
               }
             >
-              LEARN ABOUT ARCHITECTURE
+              LEARN ABOUT EMBEDDED SIGNUP
             </button>
           </div>
         </div>
@@ -379,7 +395,7 @@ export default function MetaLogin() {
         {/* Footer bar */}
         <div className="flex items-center justify-between mt-12 pt-6 border-t border-[#E8E8E8]">
           <p className="text-label-md text-[#1B1B1B]/30 tracking-widest">
-            © 2024 CONNECTE SYSTEM
+            © 2026 CONNECT-ENTERPRISE
           </p>
           <div className="flex items-center gap-6">
             <button className="text-label-md text-[#1B1B1B]/30 hover:text-[#1B1B1B]/60 transition-colors tracking-widest">
@@ -395,7 +411,7 @@ export default function MetaLogin() {
         <div className="flex items-center gap-4 mt-6 justify-end">
           <div className="w-12 border-t border-[#1B1B1B]/20" />
           <p className="text-label-md text-[#1B1B1B]/20 tracking-[0.2em]">
-            RADICAL PRECISION
+            SECURE INTEGRATION
           </p>
         </div>
       </div>

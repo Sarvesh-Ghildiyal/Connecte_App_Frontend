@@ -3,8 +3,13 @@ import type { Template, CreateTemplateRequest } from '@/types';
 
 export const templateService = {
   getAll: async () => {
-    const response = await api.get<{ templates: Template[] }>('/templates');
+    const response = await api.get<{ templates: Template[]; count: number }>('/templates/all');
     return response.data.templates;
+  },
+
+  sync: async () => {
+    const response = await api.post<{ templates: Template[]; count: number; message: string }>('/templates/sync');
+    return response.data;
   },
 
   getById: async (id: string) => {

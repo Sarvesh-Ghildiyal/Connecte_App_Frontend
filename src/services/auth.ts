@@ -3,7 +3,6 @@ import { api } from './api';
 export interface SignupRequest {
   email: string;
   password: string;
-  name: string;
 }
 
 export interface LoginRequest {
@@ -19,14 +18,13 @@ export interface AuthResponse {
 export interface UserResponse {
   id: string;
   email: string;
-  name: string;
   created_at: string;
 }
 
 export const authService = {
   signup: async (data: SignupRequest) => {
     const response = await api.post<{ message: string; user: UserResponse }>(
-      '/auth/sign_up',
+      '/auth/signup',
       data
     );
     return response.data;
