@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, X, Search, Bell, HelpCircle, Megaphone, Smartphone, ExternalLink, Phone, Copy, CheckCircle2 } from 'lucide-react';
-
+import { Plus, X, Search, Bell, HelpCircle, Megaphone, ExternalLink, Phone, Copy, CheckCircle2 } from 'lucide-react';
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /templates/create  (page3a.png + Meta production screenshots)
 //
@@ -11,7 +9,6 @@ import { Plus, X, Search, Bell, HelpCircle, Megaphone, Smartphone, ExternalLink,
 //   - Interactive Phone Preview with green bolded placeholders
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
 
 type ButtonType = 'visit_website' | 'call_phone_number' | 'copy_offer_code' | 'none';
 
@@ -32,13 +29,8 @@ const LANGUAGES = [
   'Portuguese (BR)',
 ];
 
-const categories: TemplateCategory[] = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
-
 export default function CreateTemplate() {
-  const navigate = useNavigate();
-
   // ── Form State ──────────────────────────────────────────────────────────────
-  const [category, setCategory]         = useState<TemplateCategory>('MARKETING');
   const [templateName, setTemplateName] = useState('testing_name');
   const [language, setLanguage]         = useState('English');
   const [headerContent, setHeaderContent] = useState('testing one for AI');
@@ -54,8 +46,6 @@ export default function CreateTemplate() {
   const [buttons, setButtons] = useState<ButtonRow[]>([
     { id: '1', type: 'visit_website', text: 'button and categories', url: 'https://button' }
   ]);
-
-  const bodyMax = 1024;
 
   // ── Effect: Auto-scan body for {{n}} variables ──────────────────────────────
   useEffect(() => {
