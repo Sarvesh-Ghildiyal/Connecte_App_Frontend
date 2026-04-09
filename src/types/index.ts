@@ -88,38 +88,39 @@ export interface BulkUploadResponse {
 // ─── Chat ───────────────────────────────────────────────────────────────────
 
 export type MessageType = 'text' | 'template';
-export type MessageStatus = 'sent' | 'delivered' | 'read';
+export type MessageStatus = 'accepted' | 'sent' | 'delivered' | 'read' | 'failed';
 export type MessageDirection = 'inbound' | 'outbound';
 
 export interface Message {
   id: string;
-  conversation_id: string;
-  from: string;
-  to: string;
-  type: MessageType;
-  text?: string;
-  timestamp: string;
-  status: MessageStatus;
+  conversation_id: string;       // = wa_id (e.g. "917017348970")
   direction: MessageDirection;
+  type: MessageType;
+  text: string | null;           // Message body (template name for outbound templates)
+  template_id: string | null;
+  template_name: string | null;
+  contact_name: string | null;   // WhatsApp profile name (inbound only)
+  context_message_id: string | null;
+  status: MessageStatus | null;  // null for inbound messages
+  error_code: number | null;
+  error_message: string | null;
+  timestamp: string;             // ISO 8601
 }
 
 export interface Conversation {
-  id: string;
+  id: string;                    // = wa_id (e.g. "917017348970")
   contact_name: string;
   contact_phone: string;
   last_message: string;
-  last_message_time: string;
+  last_message_time: string;     // ISO 8601
   unread_count: number;
 }
 
 export interface SendMessageRequest {
-  conversation_id: string;
-  recipient_phone: string;
-  type: MessageType;
-  text?: string;
-  template_name?: string;
-  language_code?: string;
-  variables?: string[];
+  wa_id: string;                       // Recipient WhatsApp ID
+  body: string;                        // Message text
+  preview_url?: boolean;               // Enable link preview (default false)
+  context_message_id?: string | null;  // Reply-to message ID
 }
 
 // ─── Broadcast ─────────────────────────────────────────────────────────────

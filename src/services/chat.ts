@@ -7,19 +7,16 @@ export const chatService = {
     return response.data.conversations;
   },
 
-  getMessages: async (
-    conversationId: string,
-    params?: { limit?: number; offset?: number }
-  ) => {
+  getMessages: async (waId: string, params?: { limit?: number }) => {
     const response = await api.get<{ messages: Message[] }>(
-      `/chat/conversations/${conversationId}/messages`,
+      `/chat/${waId}/messages`,
       { params }
     );
     return response.data.messages;
   },
 
   sendMessage: async (data: SendMessageRequest) => {
-    const response = await api.post<{ message_id: string; status: string }>(
+    const response = await api.post<{ message_id: string; status: string; timestamp: string }>(
       '/chat/send',
       data
     );
