@@ -43,8 +43,8 @@ export const router = createBrowserRouter([
   { path: '/auth/signup', element: <GuestRoute><Signup /></GuestRoute> },
 
   // ── Meta OAuth pages (no sidebar layout) ─────────────────────────────────
-  { path: '/meta/login',    element: <MetaLogin /> },
-  { path: '/meta/callback', element: <MetaCallback /> },
+  { path: '/meta/login',    element: <ProtectedRoute><MetaLogin /></ProtectedRoute> },
+  { path: '/meta/callback', element: <ProtectedRoute><MetaCallback /></ProtectedRoute> },
 
   // ── App pages (inside DashboardLayout with sidebar) ───────────────────────
   {
