@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Shield, Zap } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Shield, Zap } from 'lucide-react';
 import { logger } from '@/utils/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -249,6 +249,29 @@ export default function MetaLogin() {
       <div className="w-full lg:w-1/2 bg-[#F9F9F9] flex flex-col justify-between p-12">
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-md">
+            {/* App Review Notice */}
+            <div className="mb-6 rounded-3xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-100 text-yellow-700">
+                  <AlertTriangle size={18} />
+                </div>
+                <div className="grow">
+                  <p className="font-semibold text-sm text-yellow-950 mb-2">App Under Meta Review</p>
+                  <p className="text-sm text-yellow-900 leading-relaxed">
+                    Our Meta app is currently in review, so direct onboarding to the WhatsApp Cloud API is temporarily unavailable.
+                    Please reach out to{' '}
+                    <a
+                      href="mailto:founders@connecte.in"
+                      className="font-semibold text-yellow-950 underline hover:text-yellow-800"
+                    >
+                      founders@connecte.in
+                    </a>{' '}
+                    to coordinate access with our developer team.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Section label */}
             <div className="flex items-center gap-4 mb-6">
               <div className="w-6 border-t border-[#1B1B1B]/30" />
@@ -324,50 +347,15 @@ export default function MetaLogin() {
             <button
               id="meta-connect-btn"
               type="button"
-              onClick={launchWhatsAppSignup}
-              disabled={isBusy || isSuccess}
+              disabled={true}
               className="
                 w-full h-14 flex items-center justify-center gap-3 mb-3
                 text-white font-semibold text-sm tracking-[0.1em] uppercase
-                transition-all hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+                bg-gray-400 cursor-not-allowed
                 rounded-none
               "
-              style={{
-                background:
-                  isBusy || isSuccess
-                    ? '#25D366'
-                    : 'linear-gradient(45deg, #006D2F, #25D366)',
-              }}
             >
-              {step === 'loading' && (
-                <>
-                  <span
-                    className="w-4 h-4 border-2 border-white border-t-transparent animate-spin"
-                    style={{ borderRadius: '50%' }}
-                  />
-                  LOADING SDK...
-                </>
-              )}
-              {(step === 'sdk_ready' || step === 'error' || step === 'idle') && (
-                <>
-                  CONNECT WHATSAPP
-                  <ArrowRight size={16} />
-                </>
-              )}
-              {step === 'connecting' && (
-                <>
-                  <span
-                    className="w-4 h-4 border-2 border-white border-t-transparent animate-spin"
-                    style={{ borderRadius: '50%' }}
-                  />
-                  AUTHORIZING...
-                </>
-              )}
-              {step === 'success' && (
-                <>
-                  CONNECTED ✓
-                </>
-              )}
+              ONBOARDING UNAVAILABLE
             </button>
 
             {/* Secondary CTA */}
