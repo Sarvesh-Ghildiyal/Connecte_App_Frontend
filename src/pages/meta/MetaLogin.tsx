@@ -45,13 +45,14 @@ export default function MetaLogin() {
   // ── Route to Callback Logic ────────────────────────────────────────────────
   const triggerSetupAndNavigate = (params: {
     event: string;
+    type?: string;
     data?: any;
     code?: string | null;
   }) => {
     if (flowTriggeredRef.current) return;
     flowTriggeredRef.current = true;
 
-    logger.debug('META_LOGIN', 'Handing off flow to callback page', params);
+    logger.debug('META_LOGIN', 'Handing off Meta flow to callback page', params);
 
     // Navigate to callback page, passing the exact payload
     navigate('/meta/callback', {
@@ -76,13 +77,14 @@ export default function MetaLogin() {
             const params = new URLSearchParams(rawData);
             const code = params.get('code');
             if (code) {
-              logger.info('META_LOGIN', 'OAuth code detected in postMessage query string');
+              logger.info('META_LOGIN', 'OAuth code detected in postMessage query string', { raw: rawData });
               oauthCodeRef.current = code;
               
               // If we already have the message data (like waba_id) from another event, finish now
               if (messageDataRef.current) {
                 triggerSetupAndNavigate({
                   event: 'FINISH',
+                  type: 'WA_EMBEDDED_SIGNUP', // Default type for this flow
                   data: messageDataRef.current,
                   code: oauthCodeRef.current,
                 });
@@ -102,13 +104,17 @@ export default function MetaLogin() {
           data = rawData;
         }
 
-        // We only care about WhatsApp Embedded Signup messages
-        if (data?.type === 'WA_EMBEDDED_SIGNUP') {
-          logger.info('META_LOGIN', `Meta SDK event: ${data.event}`, data);
+        // Always log identifiable Meta messages clearly for compliance and debugging
+        if (data?.type === 'WA_EMBEDDED_SIGNUP' || data?.event) {
+          logger.info('META_LOGIN', `Meta SDK message received [${data.type || 'UNKNOWN'}]: ${data.event}`, data);
+        }
 
+        // We only care about WhatsApp Embedded Signup messages for the automated setup flow
+        if (data?.type === 'WA_EMBEDDED_SIGNUP') {
           if (data.event === 'CANCEL' || data.event === 'ERROR') {
             triggerSetupAndNavigate({
               event: data.event,
+              type: data.type,
               data: data.data,
             });
             return;
@@ -127,7 +133,7 @@ export default function MetaLogin() {
             const knownFields = [...requiredFields, 'business_id'];
             const extraFields = Object.keys(data.data || {}).filter(k => !knownFields.includes(k));
             if (extraFields.length > 0) {
-              logger.info('META_LOGIN', 'Additional Meta fields detected', { fields: extraFields });
+              logger.info('META_LOGIN', 'Additional Meta fields detected in setup data', { fields: extraFields });
             }
           }
 
@@ -141,6 +147,7 @@ export default function MetaLogin() {
           if (oauthCodeRef.current !== null) {
             triggerSetupAndNavigate({
               event: data.event,
+              type: data.type,
               data: messageDataRef.current,
               code: oauthCodeRef.current,
             });

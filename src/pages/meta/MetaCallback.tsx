@@ -38,6 +38,7 @@ export default function MetaCallback() {
 
     const payload = location.state as {
       event: string;
+      type?: string;
       data?: any;
       code?: string | null;
     } | null;
@@ -55,13 +56,15 @@ export default function MetaCallback() {
           ? 'Setup was cancelled by the user.' 
           : 'An error occurred directly from Meta platform.'
       );
-      // Give them a moment to read, then send back
-      setTimeout(() => navigate('/meta/login', { replace: true }), 4000);
+      // Removed auto-redirect to allow user to read the message
       return;
     }
 
     const runSetup = async () => {
-      logger.info('META_CALLBACK', 'Initiating backend setup process', { event: payload.event });
+      logger.info('META_CALLBACK', 'Initiating backend setup process', { 
+        event: payload.event,
+        type: payload.type 
+      });
       // Start simulated step progression for UI
       const stepTimer1 = setTimeout(() => setActiveStepIndex(1), 1500);
       const stepTimer2 = setTimeout(() => setActiveStepIndex(2), 3000);
@@ -70,6 +73,7 @@ export default function MetaCallback() {
       try {
         await metaSignupService.setup({
           event: payload.event,
+          type: payload.type || 'WA_EMBEDDED_SIGNUP',
           code: payload.code,
           data: payload.data
         });
@@ -91,13 +95,27 @@ export default function MetaCallback() {
         }, 1500);
 
       } catch (err: any) {
+        // Handle FastAPI style validation errors which arrive as an array of objects
+        const detail = err.response?.data?.detail;
+        let errorMessage = 'The backend failed to complete the Meta setup protocol. Please try again.';
+
+        if (Array.isArray(detail)) {
+          errorMessage = detail.map((d: any) => `${d.loc?.[d.loc.length - 1] || 'error'}: ${d.msg}`).join(', ');
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+
         logger.error('META_CALLBACK', 'Backend setup failed', { 
-          error: err.response?.data?.detail || err.message,
+          error: errorMessage,
           rawResponse: err.response?.data 
         });
+        
         setStatus('error');
-        setErrorDetails(err.response?.data?.detail || 'The backend failed to complete the Meta setup protocol. Please try again.');
-        setTimeout(() => navigate('/meta/login', { replace: true }), 5000);
+        setErrorDetails(errorMessage);
+        
+        // Removed auto-redirect to allow user to read the detailed error message
       } finally {
         clearTimeout(stepTimer1);
         clearTimeout(stepTimer2);
@@ -163,16 +181,25 @@ export default function MetaCallback() {
         )}
 
         {status === 'error' && (
-          <div className="bg-red-50 p-4 border-l-4 border-[#FF4D4D] flex items-start gap-3">
-            <AlertCircle size={18} className="text-[#FF4D4D] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[13px] font-bold text-[#FF4D4D] mb-1">
-                Setup Error
-              </p>
-              <p className="text-[13px] text-[#FF4D4D]/80">
-                {errorDetails}
-              </p>
+          <div className="bg-red-50 p-6 border-l-4 border-[#FF4D4D] flex flex-col gap-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle size={20} className="text-[#FF4D4D] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[14px] font-bold text-[#FF4D4D] mb-1 uppercase tracking-tight">
+                  Protocol Error
+                </p>
+                <p className="text-[13px] text-[#FF4D4D]/80 leading-relaxed">
+                  {errorDetails}
+                </p>
+              </div>
             </div>
+            
+            <button
+              onClick={() => navigate('/meta/login')}
+              className="w-full h-11 border border-[#FF4D4D]/30 text-[#FF4D4D] font-bold text-[11px] tracking-[0.15em] uppercase hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
+            >
+              ← Restart Integration
+            </button>
           </div>
         )}
 

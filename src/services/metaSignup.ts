@@ -18,8 +18,9 @@ export interface MetaCallbackResponse {
 
 export interface MetaSetupRequest {
   event: string; // Typically 'FINISH', 'CANCEL', 'ERROR'
+  type: string;  // e.g., 'WA_EMBEDDED_SIGNUP'
   code?: string | null;
-  data?: any; // Contains the full event data from Meta SDK exactly as received
+  data?: any;    // Contains the nested IDs (waba_id, phone_number_id, etc.)
 }
 
 export interface MetaSetupResponse {
@@ -36,6 +37,8 @@ export const metaSignupService = {
   },
 
   setup: async (data: MetaSetupRequest) => {
+    // We send the object exactly as structured (nested 'data' and top-level 'type')
+    // to match the backend Pydantic model: MetaSetupRequest
     const response = await api.post<MetaSetupResponse>('/meta/setup', data);
     return response.data;
   },
