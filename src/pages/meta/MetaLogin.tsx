@@ -45,13 +45,14 @@ export default function MetaLogin() {
   // ── Route to Callback Logic ────────────────────────────────────────────────
   const triggerSetupAndNavigate = (params: {
     event: string;
+    type?: string;
     data?: any;
     code?: string | null;
   }) => {
     if (flowTriggeredRef.current) return;
     flowTriggeredRef.current = true;
 
-    logger.debug('META_LOGIN', 'Handing off flow to callback page', params);
+    logger.debug('META_LOGIN', 'Handing off Meta flow to callback page', params);
 
     // Navigate to callback page, passing the exact payload
     navigate('/meta/callback', {
@@ -63,42 +64,99 @@ export default function MetaLogin() {
   // ── Facebook SDK loader ────────────────────────────────────────────────────
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Security: Only process messages from expected origins
       if (!event.origin.endsWith('facebook.com')) return;
       
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'WA_EMBEDDED_SIGNUP') {
-          logger.info('META_LOGIN', `Meta SDK message received: ${data.event}`, data);
+      const rawData = event.data;
+      let data: any = null;
 
+      try {
+        if (typeof rawData === 'string') {
+          // 1. Check for URL-encoded query string (handles 'cb=...&code=...' payloads)
+          if (rawData.includes('code=') || rawData.includes('cb=')) {
+            const params = new URLSearchParams(rawData);
+            const code = params.get('code');
+            if (code) {
+              logger.info('META_LOGIN', 'OAuth code detected in postMessage query string', { raw: rawData });
+              oauthCodeRef.current = code;
+              
+              // If we already have the message data (like waba_id) from another event, finish now
+              if (messageDataRef.current) {
+                triggerSetupAndNavigate({
+                  event: 'FINISH',
+                  type: 'WA_EMBEDDED_SIGNUP', // Default type for this flow
+                  data: messageDataRef.current,
+                  code: oauthCodeRef.current,
+                });
+              }
+              return;
+            }
+          }
+
+          // 2. Try JSON parsing (handles WA_EMBEDDED_SIGNUP events)
+          try {
+            data = JSON.parse(rawData);
+          } catch {
+            // Silently ignore non-JSON and non-code-bearing internal SDK chatter
+            return;
+          }
+        } else if (typeof rawData === 'object' && rawData !== null) {
+          data = rawData;
+        }
+
+        // Always log identifiable Meta messages clearly for compliance and debugging
+        if (data?.type === 'WA_EMBEDDED_SIGNUP' || data?.event) {
+          logger.info('META_LOGIN', `Meta SDK message received [${data.type || 'UNKNOWN'}]: ${data.event}`, data);
+        }
+
+        // We only care about WhatsApp Embedded Signup messages for the automated setup flow
+        if (data?.type === 'WA_EMBEDDED_SIGNUP') {
           if (data.event === 'CANCEL' || data.event === 'ERROR') {
             triggerSetupAndNavigate({
               event: data.event,
+              type: data.type,
               data: data.data,
             });
             return;
           }
 
-          // Capture success data
-          messageDataRef.current = data.data;
+          // Strict check for core required fields, but always allow and log extra info
+          if (data.event === 'FINISH') {
+            const requiredFields = ['phone_number_id', 'waba_id'];
+            const missing = requiredFields.filter(f => !data.data?.[f]);
+            
+            if (missing.length > 0) {
+              logger.warn('META_LOGIN', 'Meta FINISH message missing core fields', { missing });
+            }
 
-          // Check for extra fields (ad accounts, catalogs, etc.)
-          const knownFields = ['phone_number_id', 'waba_id', 'business_id'];
-          const extraFields = Object.keys(data.data || {}).filter(k => !knownFields.includes(k));
-          if (extraFields.length > 0) {
-            logger.warn('META_LOGIN', 'Extra fields detected in Meta message data', { fields: extraFields });
+            // Always log extra fields for visibility
+            const knownFields = [...requiredFields, 'business_id'];
+            const extraFields = Object.keys(data.data || {}).filter(k => !knownFields.includes(k));
+            if (extraFields.length > 0) {
+              logger.info('META_LOGIN', 'Additional Meta fields detected in setup data', { fields: extraFields });
+            }
           }
 
-          // If we already have the OAuth code, we can finish
+          // Merge all data fields to ensure we capture everything Meta provides
+          messageDataRef.current = {
+            ...(messageDataRef.current || {}),
+            ...(data.data || {})
+          };
+
+          // If we have both the code and the message data, complete the flow
           if (oauthCodeRef.current !== null) {
             triggerSetupAndNavigate({
               event: data.event,
+              type: data.type,
               data: messageDataRef.current,
               code: oauthCodeRef.current,
             });
           }
         }
       } catch (err) {
-        logger.error('META_LOGIN', 'Failed to parse Meta SDK message', { raw: event.data, error: err });
+        logger.error('META_LOGIN', 'Error processing Meta SDK message', { 
+          error: err instanceof Error ? err.message : String(err)
+        });
       }
     };
     window.addEventListener('message', handleMessage);
