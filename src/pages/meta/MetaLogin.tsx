@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, AlertTriangle, Shield, Zap } from 'lucide-react';
+import { AlertTriangle, Shield, Zap } from 'lucide-react';
 import { logger } from '@/utils/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,7 +21,6 @@ declare global {
 
 const META_APP_ID = import.meta.env.VITE_META_APP_ID ?? '';
 const META_API_VERSION = import.meta.env.VITE_META_API_VERSION ?? 'v21.0';
-const META_ES_CONFIG_ID = import.meta.env.VITE_META_ES_CONFIG_ID ?? '';
 
 interface MetaFlowData {
   phone_number_id?: string;
@@ -36,7 +35,7 @@ export default function MetaLogin() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState<ConnectionStep>('loading');
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   // Refs to coordinate between the message event and the OAuth callback
   const messageDataRef = useRef<MetaFlowData | null>(null);
@@ -195,49 +194,8 @@ export default function MetaLogin() {
   }, []);
 
   // ── Launch Meta OAuth popup ────────────────────────────────────────────────
-  const launchWhatsAppSignup = () => {
-    if (typeof window.FB === 'undefined') {
-      setError('Facebook SDK not loaded. Please refresh and try again.');
-      return;
-    }
-
-    setStep('connecting');
-    setError(null);
-    logger.info('META_LOGIN', 'Launching WhatsApp signup popup', { configId: META_ES_CONFIG_ID });
-
-    window.FB.login(
-      (response: any) => {
-        logger.debug('META_LOGIN', 'FB.login callback executed', response);
-
-        if (response.authResponse?.code) {
-          oauthCodeRef.current = response.authResponse.code;
-          
-          // If we already have the message data, we can finish
-          if (messageDataRef.current) {
-            triggerSetupAndNavigate({
-              // When messageData exists, it should be a success event like FINISH
-              event: 'FINISH', 
-              data: messageDataRef.current,
-              code: oauthCodeRef.current,
-            });
-          }
-        } else {
-          // No code returned — likely a cancellation or error from the FB.login side
-          logger.warn('META_LOGIN', 'FB.login callback returned no auth code', response);
-          // We wait for the 'CANCEL' message event to handle navigation uniformly
-        }
-      },
-      {
-        config_id: META_ES_CONFIG_ID,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: { setup: {} },
-      }
-    );
-  };
 
   // ── Derived UI state ───────────────────────────────────────────────────────
-  const isBusy = step === 'loading' || step === 'connecting';
   const isSuccess = step === 'success';
 
   return (
