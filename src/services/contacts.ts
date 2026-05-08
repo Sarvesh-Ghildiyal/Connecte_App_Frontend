@@ -2,7 +2,7 @@ import { api } from './api';
 import type { Contact, ContactCreate } from '@/types';
 
 export const contactService = {
-  getAll: async (params?: { tag?: string }) => {
+  getAll: async (params?: { tag?: string; include_deleted?: boolean }) => {
     const response = await api.get<{ contacts: Contact[]; count: number }>('/contacts/all', { params });
     return response.data;
   },
@@ -15,8 +15,13 @@ export const contactService = {
     return response.data;
   },
 
-  delete: async (id: string) => {
-    const response = await api.delete(`/contacts/${id}`);
+  archive: async (id: string) => {
+    const response = await api.patch<{ status: string; message: string }>(`/contacts/${id}/archive`);
+    return response.data;
+  },
+
+  restore: async (id: string) => {
+    const response = await api.patch<{ status: string; message: string }>(`/contacts/${id}/restore`);
     return response.data;
   },
 };

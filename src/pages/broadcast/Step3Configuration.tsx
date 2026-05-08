@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Database, User, Smartphone, Type } from 'lucide-react';
+import { Database, User, Smartphone, Type, ChevronDown } from 'lucide-react';
 import type { Template, TemplateParameterInput } from '@/types';
 
 interface Step3Props {
@@ -9,6 +9,11 @@ interface Step3Props {
   onNext: () => void;
   onBack: () => void;
 }
+
+const DYNAMIC_OPTIONS = [
+  { label: 'CONTACT FULL NAME', value: 'contact.name' },
+  { label: 'PHONE NUMBER', value: 'contact.phone_number' },
+];
 
 export function Step3Configuration({ template, parameters, onUpdateParameters, onNext, onBack }: Step3Props) {
   
@@ -32,7 +37,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
     });
   }, [bodyText]);
 
-  const handleUpdateParam = (key: string, value: string) => {
+  const handleUpdateParam = (key: string, value: string, mode: 'static' | 'dynamic' = 'static') => {
     const placeholder = placeholders.find(p => p.key === key);
     if (!placeholder) return;
 
@@ -44,6 +49,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
     const newParam: TemplateParameterInput = {
       type: 'text',
       value,
+      mode,
       ...(placeholder.isNumeric ? { index: placeholder.index } : { name: placeholder.name })
     };
 
@@ -62,10 +68,22 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
        const param = parameters.find(param => 
          p.isNumeric ? (param.index === p.index) : (param.name === p.name)
        );
-       const val = param?.value || `{{${p.key}}}`;
+       
+       let displayVal = `{{${p.key}}}`;
+       if (param?.value) {
+         if (param.mode === 'dynamic') {
+           const option = DYNAMIC_OPTIONS.find(o => o.value === param.value);
+           displayVal = `[${option?.label || param.value}]`;
+         } else {
+           displayVal = param.value;
+         }
+       }
+
        // Simple escape for HTML
-       const displayVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-       result = result.replace(`{{${p.key}}}`, `<span class="text-[#25D366] font-black">${displayVal}</span>`);
+       const escapeHtml = (str: string) => str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+       const safeVal = escapeHtml(displayVal);
+       
+       result = result.replace(`{{${p.key}}}`, `<span class="text-[#25D366] font-black">${safeVal}</span>`);
     });
     return <p className="text-[13px] leading-relaxed text-[#1B1B1B]" dangerouslySetInnerHTML={{ __html: result }} />;
   };
@@ -91,32 +109,75 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
         <div className="space-y-10">
           <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Variable Mapping</p>
           
-          <div className="space-y-8">
+          <div className="space-y-12">
             {placeholders.map((p) => {
                const param = parameters.find(param => 
                  p.isNumeric ? (param.index === p.index) : (param.name === p.name)
                );
                const currentValue = param?.value || '';
+               const currentMode = param?.mode || 'static';
+
                return (
-                 <div key={p.key} className="space-y-3">
+                 <div key={p.key} className="space-y-4">
                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-black tracking-widest text-[#1B1B1B]/40 uppercase">
-                        Placeholder <span className="text-[#1B1B1B]">{`{{${p.key}}}`}</span>
-                      </p>
-                      {currentValue && <span className="text-[9px] font-black text-[#25D366] tracking-widest uppercase flex items-center gap-1">Defined <Type size={10}/></span>}
+                      <div className="flex items-center gap-4">
+                        <p className="text-[10px] font-black tracking-widest text-[#1B1B1B]/40 uppercase">
+                          Placeholder <span className="text-[#1B1B1B]">{`{{${p.key}}}`}</span>
+                        </p>
+                        <div className="flex bg-[#F3F3F3] p-0.5 border border-[#E8E8E8]">
+                          <button 
+                            onClick={() => handleUpdateParam(p.key, '', 'static')}
+                            className={`px-3 py-1 text-[8px] font-black tracking-widest uppercase transition-all ${
+                              currentMode === 'static' ? 'bg-[#1B1B1B] text-white' : 'text-[#1B1B1B]/30 hover:text-[#1B1B1B]'
+                            }`}
+                          >
+                            STATIC
+                          </button>
+                          <button 
+                            onClick={() => handleUpdateParam(p.key, DYNAMIC_OPTIONS[0].value, 'dynamic')}
+                            className={`px-3 py-1 text-[8px] font-black tracking-widest uppercase transition-all ${
+                              currentMode === 'dynamic' ? 'bg-[#25D366] text-black' : 'text-[#1B1B1B]/30 hover:text-[#1B1B1B]'
+                            }`}
+                          >
+                            DYNAMIC
+                          </button>
+                        </div>
+                      </div>
+                      {currentValue && <span className="text-[9px] font-black text-[#25D366] tracking-widest uppercase flex items-center gap-1">Mapped <Type size={10}/></span>}
                    </div>
-                   <div className="relative group">
-                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${currentValue ? 'bg-[#25D366]' : 'bg-[#E8E8E8]'}`} />
-                     <input 
-                        type="text"
-                        value={currentValue}
-                        onChange={(e) => handleUpdateParam(p.key, e.target.value)}
-                        placeholder={`Value for ${p.key}...`}
-                        className="w-full h-14 bg-[#F3F3F3] border-none outline-none px-6 text-[11px] font-black tracking-widest text-[#1B1B1B] uppercase placeholder:text-[#1B1B1B]/20"
-                     />
-                     <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
-                        <Database size={16}/>
-                     </div>
+
+                   <div className="relative">
+                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${currentValue ? (currentMode === 'dynamic' ? 'bg-[#25D366]' : 'bg-[#1B1B1B]') : 'bg-[#E8E8E8]'}`} />
+                     
+                     {currentMode === 'static' ? (
+                        <div className="relative group">
+                          <input 
+                              type="text"
+                              value={currentValue}
+                              onChange={(e) => handleUpdateParam(p.key, e.target.value, 'static')}
+                              placeholder={`Enter value for ${p.key}...`}
+                              className="w-full h-14 bg-[#F3F3F3] border-none outline-none px-6 text-[11px] font-black tracking-widest text-[#1B1B1B] uppercase placeholder:text-[#1B1B1B]/20"
+                          />
+                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+                              <Database size={16}/>
+                          </div>
+                        </div>
+                     ) : (
+                        <div className="relative group">
+                          <select 
+                             value={currentValue}
+                             onChange={(e) => handleUpdateParam(p.key, e.target.value, 'dynamic')}
+                             className="w-full h-14 bg-[#F3F3F3] border-none outline-none px-6 text-[11px] font-black tracking-widest text-[#25D366] uppercase appearance-none cursor-pointer"
+                          >
+                            {DYNAMIC_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-[#25D366]">
+                              <ChevronDown size={16}/>
+                          </div>
+                        </div>
+                     )}
                    </div>
                  </div>
                );
@@ -151,7 +212,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
                   </div>
                </div>
                <div className="flex-1 bg-[#E5DDD5] p-4 flex flex-col gap-4 overflow-y-auto h-[calc(100%-100px)]">
-                  <div className="bg-white p-4 shadow-sm relative self-start max-w-[90%]">
+                  <div className="bg-white p-4 shadow-sm relative self-start max-w-[90%] text-wrap break-words">
                      {renderPreview(bodyText)}
                      <div className="flex justify-end mt-2">
                         <span className="text-[8px] opacity-40 uppercase">12:45 PM</span>
@@ -181,7 +242,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
           <button
             onClick={onNext}
             disabled={!isComplete}
-            className="h-12 px-12 bg-[#1B1B1B] text-white text-[11px] font-black tracking-[0.2em] uppercase hover:bg-[#25D366] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            className="h-12 px-12 bg-[#1B1B1B] text-white text-[11px] font-black tracking-[0.2em] uppercase hover:bg-[#25D366] hover:text-black transition-all disabled:opacity-20 disabled:cursor-not-allowed"
           >
             NEXT STEP: REVIEW
           </button>

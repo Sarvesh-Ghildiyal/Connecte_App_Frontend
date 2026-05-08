@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Upload, UserPlus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Upload, UserPlus, ChevronLeft, ChevronRight, Loader2, Archive, RotateCcw } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -111,6 +111,8 @@ export default function Contacts() {
   const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Derived: Unique tags from real data for filtration
   const availableTags = useMemo(() => {
@@ -123,7 +125,7 @@ export default function Contacts() {
     try {
       if (contacts.length === 0) setIsLoading(true);
       setError(null);
-      const response = await contactService.getAll();
+      const response = await contactService.getAll(showArchived ? { include_deleted: true } : undefined);
       logger.info('CONTACTS_PAGE', 'Fetched contacts successfully', { count: response.contacts.length });
       
       const mapped: ContactUI[] = response.contacts.map((c: Contact) => {
@@ -158,7 +160,7 @@ export default function Contacts() {
 
   useEffect(() => {
     fetchContacts();
-  }, []);
+  }, [showArchived]);
 
   const handleSync = async () => {
     try {
@@ -167,6 +169,32 @@ export default function Contacts() {
       logger.info('CONTACTS_PAGE', 'Manual refresh successful');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleArchive = async (id: string) => {
+    try {
+      setActionLoadingId(id);
+      await contactService.archive(id);
+      logger.info('CONTACTS_PAGE', 'Contact archived', { id });
+      await fetchContacts();
+    } catch (err: any) {
+      logger.error('CONTACTS_PAGE', 'Failed to archive contact', { error: err.message });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      setActionLoadingId(id);
+      await contactService.restore(id);
+      logger.info('CONTACTS_PAGE', 'Contact restored', { id });
+      await fetchContacts();
+    } catch (err: any) {
+      logger.error('CONTACTS_PAGE', 'Failed to restore contact', { error: err.message });
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -270,6 +298,17 @@ export default function Contacts() {
               className="hidden"
               onChange={handleFileChange}
             />
+            <button
+              id="show-archived-btn"
+              onClick={() => setShowArchived(p => !p)}
+              className={`flex items-center gap-2 h-12 px-6 border text-[11px] font-black tracking-widest uppercase transition-all shadow-sm cursor-pointer ${
+                showArchived
+                  ? 'bg-[#1B1B1B] text-white border-[#1B1B1B]'
+                  : 'border-[#E8E8E8] bg-white text-[#1B1B1B] hover:bg-[#F9F9F9]'
+              }`}
+            >
+              <Archive size={14} /> {showArchived ? 'HIDE ARCHIVED' : 'SHOW ARCHIVED'}
+            </button>
             <button
               id="import-csv-btn"
               onClick={handleImportClick}
@@ -408,7 +447,29 @@ export default function Contacts() {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right pr-6" />
+                      <TableCell className="text-right pr-6">
+                        <div className="flex items-center justify-end gap-2">
+                          {actionLoadingId === contact.id ? (
+                            <Loader2 size={14} className="animate-spin text-[#1B1B1B]/40" />
+                          ) : contact.optInStatus === 'opted_out' && showArchived ? (
+                            <button
+                              onClick={() => handleRestore(contact.id)}
+                              title="Restore contact"
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black tracking-widest uppercase text-[#25D366] border border-[#25D366]/30 hover:bg-[#25D366] hover:text-black transition-all"
+                            >
+                              <RotateCcw size={11} /> RESTORE
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleArchive(contact.id)}
+                              title="Archive contact"
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black tracking-widest uppercase text-[#1B1B1B]/40 border border-[#E8E8E8] hover:bg-[#1B1B1B] hover:text-white hover:border-[#1B1B1B] transition-all"
+                            >
+                              <Archive size={11} /> ARCHIVE
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

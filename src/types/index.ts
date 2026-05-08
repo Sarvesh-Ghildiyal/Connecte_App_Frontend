@@ -52,6 +52,7 @@ export interface Contact {
   name: string | null;
   tags: string[];
   opted_in: boolean;
+  is_deleted: boolean;
   created_at: string;
 }
 
@@ -132,17 +133,18 @@ export interface TemplateParameterInput {
   value: any;
   name?: string;  // The lowercase name (e.g., 'first_name'). Required for Named format.
   index?: number; // Optional index for positional templates
+  mode: 'static' | 'dynamic'; // 'static' | 'dynamic'
 }
 
 export interface BroadcastRequest {
   template_id: string;
   parameters: TemplateParameterInput[];
-  tags: string[];
+  tags?: string[];
+  contact_ids?: string[];
 }
 
 export interface BroadcastResponse {
-  broadcast_id: string;
-  status: 'queued';
-  total_recipients: number;
-  message: string;
+  status: 'queued' | 'filtered';
+  count: number;
+  message?: string;
 }

@@ -20,7 +20,9 @@ export default function Broadcast() {
   
   // Selection State
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [selectionMode, setSelectionMode] = useState<'tags' | 'contacts'>('tags');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [parameters, setParameters] = useState<TemplateParameterInput[]>([]);
 
   useEffect(() => {
@@ -59,30 +61,42 @@ export default function Broadcast() {
       const positional = parameters
         .filter(p => p.index !== undefined)
         .sort((a, b) => (a.index || 0) - (b.index || 0))
-        .map(({ type, value }) => ({ type, value }));
+        .map(({ type, value, mode }) => ({ type, value, mode }));
 
       const named = parameters
         .filter(p => p.name !== undefined)
-        .map(({ type, value, name }) => ({ type, value, name }));
+        .map(({ type, value, name, mode }) => ({ type, value, name, mode }));
 
       const finalParameters = [...positional, ...named];
 
-      const payload = {
+      const payload: any = {
         template_id: selectedTemplate.id,
         parameters: finalParameters,
-        tags: selectedTags
       };
 
-      await broadcastService.send(payload);
-      logger.info('BROADCAST_WIZARD', 'Broadcast launched successfully', { payload });
-      alert('BROADCAST LAUNCHED! ⚡');
+      if (selectionMode === 'contacts') {
+        payload.contact_ids = selectedContactIds;
+      } else {
+        payload.tags = selectedTags;
+      }
+
+      const result = await broadcastService.send(payload);
+      logger.info('BROADCAST_WIZARD', 'Broadcast launched successfully', { result });
+
+      if (result.status === 'filtered') {
+        alert('No opted-in contacts matched the selected criteria. Broadcast was not sent.');
+      } else {
+        alert(`⚡ BROADCAST QUEUED — ${result.count} recipients will receive this message.`);
+      }
     } catch (err: any) {
       logger.error('BROADCAST_WIZARD', 'Failed to launch broadcast', { error: err.message });
       alert('Failed to launch broadcast. Please check logs.');
     }
   };
 
-  const recipientCount = contacts.filter(c => c.tags.some(t => selectedTags.includes(t))).length;
+  const recipientCount = selectionMode === 'contacts' 
+    ? selectedContactIds.length 
+    : contacts.filter(c => c.tags.some(t => selectedTags.includes(t))).length;
 
   return (
     <div className="flex flex-col h-full bg-[#F9F9F9] overflow-hidden">
@@ -105,8 +119,12 @@ export default function Broadcast() {
           <Step2AudienceSelection 
             contacts={contacts}
             isLoading={isContactsLoading}
+            selectionMode={selectionMode}
+            onSelectionModeChange={setSelectionMode}
             selectedTags={selectedTags}
             onSelectTags={setSelectedTags}
+            selectedContactIds={selectedContactIds}
+            onSelectContactIds={setSelectedContactIds}
             onNext={nextStep}
             onBack={prevStep}
             templateCategory={selectedTemplate?.category}
