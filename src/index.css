@@ -134,6 +134,17 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled,
+  button[disabled],
+  [role="button"][disabled] {
+    cursor: not-allowed !important;
+    pointer-events: auto !important;
+  }
 }
 
 /* Radical Precision Components */

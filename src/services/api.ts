@@ -11,19 +11,15 @@ if (isProd && !import.meta.env.VITE_API_BASE_URL) {
 // Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor - Attach JWT token from sessionStorage
+// Request interceptor - Attach active Waba ID
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('connecte_auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     const { activeWabaId } = useAuthStore.getState();
     if (activeWabaId) {
       config.headers['X-Waba-Id'] = activeWabaId;
@@ -64,7 +60,7 @@ api.interceptors.response.use(
       if (isLoginRequest || isRefreshRequest) {
         // If refresh fails, we clear state and redirect
         if (isRefreshRequest) {
-          sessionStorage.removeItem('connecte_auth_token');
+          useAuthStore.getState().logout();
           window.location.href = '/auth/login';
         }
         return Promise.reject(error);
@@ -72,7 +68,7 @@ api.interceptors.response.use(
 
       // If we already retried this request once, it truly failed
       if (originalRequest._retry) {
-        sessionStorage.removeItem('connecte_auth_token');
+        useAuthStore.getState().logout();
         window.location.href = '/auth/login';
         return Promise.reject(error);
       }
@@ -82,8 +78,7 @@ api.interceptors.response.use(
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
-          .then((token) => {
-            originalRequest.headers.Authorization = 'Bearer ' + token;
+          .then(() => {
             return api(originalRequest);
           })
           .catch((err) => {
@@ -99,7 +94,7 @@ api.interceptors.response.use(
         // Call the backend to refresh the token.
         // We use a fresh axios instance here to avoid interceptor loops,
         // and we MUST pass withCredentials: true so the browser sends the HttpOnly refresh_token cookie.
-        const response = await axios.post(
+        await axios.post(
           `${API_BASE_URL}/auth/refresh`,
           {},
           {
@@ -107,26 +102,17 @@ api.interceptors.response.use(
             headers: { 'Content-Type': 'application/json' }
           }
         );
-
-        // Extract the new access token
-        const newAccessToken = response.data.access_token;
-        
-        // Update session storage
-        sessionStorage.setItem('connecte_auth_token', newAccessToken);
-        
-        // Update the original request's header and retry
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         
         // Process the queue for any other requests that were waiting
-        processQueue(null, newAccessToken);
+        processQueue(null, null);
         
-        // Retry the original request
+        // Retry the original request (cookies are now updated/refreshed)
         return api(originalRequest);
         
       } catch (refreshError) {
         // If the refresh token itself is invalid or expired
         processQueue(refreshError, null);
-        sessionStorage.removeItem('connecte_auth_token');
+        useAuthStore.getState().logout();
         window.location.href = '/auth/login';
         return Promise.reject(refreshError);
       } finally {

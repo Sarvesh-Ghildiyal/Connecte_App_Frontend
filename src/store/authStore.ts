@@ -45,7 +45,6 @@ export const useAuthStore = create<AuthState>()(
 
       // Actions
       login: (token, user) => {
-        sessionStorage.setItem('connecte_auth_token', token);
         set({
           token,
           user,
@@ -54,7 +53,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        sessionStorage.removeItem('connecte_auth_token');
         set({
           token: null,
           user: null,
@@ -78,17 +76,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: () => {
-        const token = sessionStorage.getItem('connecte_auth_token');
-        if (token) {
-          set({ token, isAuthenticated: true });
-        }
+        // Auth is now managed strictly via browser HttpOnly cookies and Zustand rehydration
       },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        // Don't persist token (use sessionStorage)
+        // Persist auth status, active waba and user details
         user: state.user,
+        isAuthenticated: state.isAuthenticated,
         isMetaConnected: state.isMetaConnected,
         metaData: state.metaData,
         activeWabaId: state.activeWabaId,
