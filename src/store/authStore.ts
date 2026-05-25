@@ -19,11 +19,13 @@ interface AuthState {
   isAuthenticated: boolean;
   isMetaConnected: boolean;
   metaData: MetaData;
+  activeWabaId: string | null;
 
   // Actions
   login: (token: string, user: User) => void;
   logout: () => void;
   setMetaConnection: (data: MetaData) => void;
+  setActiveWabaId: (id: string | null) => void;
   checkAuth: () => void;
 }
 
@@ -39,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
         waba_id: null,
         phone_number_id: null,
       },
+      activeWabaId: null,
 
       // Actions
       login: (token, user) => {
@@ -58,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           isMetaConnected: false,
           metaData: { waba_id: null, phone_number_id: null },
+          activeWabaId: null,
         });
       },
 
@@ -65,7 +69,12 @@ export const useAuthStore = create<AuthState>()(
         set({
           isMetaConnected: true,
           metaData: data,
+          activeWabaId: data.waba_id,
         });
+      },
+
+      setActiveWabaId: (id) => {
+        set({ activeWabaId: id });
       },
 
       checkAuth: () => {
@@ -82,6 +91,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isMetaConnected: state.isMetaConnected,
         metaData: state.metaData,
+        activeWabaId: state.activeWabaId,
       }),
     }
   )

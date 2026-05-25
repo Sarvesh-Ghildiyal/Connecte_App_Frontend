@@ -40,20 +40,19 @@ export default function Signup() {
 
     setIsLoading(true);
     try {
-      // 1. Create account
-      await authService.signup({ email: email.trim(), password });
-
-      // 2. Auto-login
-      const response = await authService.login({ email: email.trim(), password });
+      // 1. Create account & Auto-login
+      const response = await authService.signup({ email: email.trim(), password });
 
       login(response.access_token, {
         id: '',
-        email: email.trim(),
+        email: response.user?.user_email || email.trim(),
       });
 
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
-      if (err.response?.status === 400 || err.response?.status === 422) {
+      if (err.response?.status === 409) {
+        setError('email is already registered.');
+      } else if (err.response?.status === 400 || err.response?.status === 422) {
         setError(err.response?.data?.detail || 'registration failed. check identifiers.');
       } else {
         setError('could not connect to the system. please try again.');

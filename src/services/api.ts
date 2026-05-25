@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '@/store/authStore';
 
 const isProd = import.meta.env.PROD;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (isProd ? '' : 'http://localhost:8000');
@@ -22,6 +23,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const { activeWabaId } = useAuthStore.getState();
+    if (activeWabaId) {
+      config.headers['X-Waba-Id'] = activeWabaId;
+    }
+
     return config;
   },
   (error) => {

@@ -432,7 +432,14 @@ export default function Contacts() {
                             </span>
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-[#1B1B1B]">{contact.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-[#1B1B1B]">{contact.name}</p>
+                              {contact.optInStatus === 'opted_out' && (
+                                <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[9px] font-bold uppercase tracking-widest rounded-sm border border-red-200">
+                                  OPT-OUT
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[10px] text-[#1B1B1B]/30 font-medium">{contact.updatedAt}</p>
                           </div>
                         </div>

@@ -21,6 +21,7 @@ declare global {
 
 const META_APP_ID = import.meta.env.VITE_META_APP_ID ?? '';
 const META_API_VERSION = import.meta.env.VITE_META_API_VERSION ?? 'v21.0';
+const META_ES_CONFIG_ID = import.meta.env.VITE_META_ES_CONFIG_ID ?? import.meta.env.VITE_META_CONFIG_ID ?? '';
 
 interface MetaFlowData {
   phone_number_id?: string;
@@ -194,6 +195,33 @@ export default function MetaLogin() {
   }, []);
 
   // ── Launch Meta OAuth popup ────────────────────────────────────────────────
+  const launchWhatsAppSignup = () => {
+    if (!window.FB) {
+      logger.error('META_LOGIN', 'Facebook SDK not loaded');
+      return;
+    }
+
+    logger.info('META_LOGIN', 'Launching Meta Embedded Signup popup', { configId: META_ES_CONFIG_ID });
+
+    window.FB.login(
+      (response: any) => {
+        if (response.authResponse) {
+          const code = response.authResponse.code;
+          logger.info('META_LOGIN', 'Received authorization code', { code });
+        } else {
+          logger.error('META_LOGIN', 'Meta OAuth failed or was cancelled', response);
+        }
+      },
+      {
+        config_id: META_ES_CONFIG_ID,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+        },
+      }
+    );
+  };
 
   // ── Derived UI state ───────────────────────────────────────────────────────
   const isSuccess = step === 'success';
@@ -265,28 +293,7 @@ export default function MetaLogin() {
       <div className="w-full lg:w-1/2 bg-[#F9F9F9] flex flex-col justify-between p-12">
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-md">
-            {/* App Review Notice */}
-            <div className="mb-6 rounded-3xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-100 text-yellow-700">
-                  <AlertTriangle size={18} />
-                </div>
-                <div className="grow">
-                  <p className="font-semibold text-sm text-yellow-950 mb-2">App Under Meta Review</p>
-                  <p className="text-sm text-yellow-900 leading-relaxed">
-                    Our Meta app is currently in review, so direct onboarding to the WhatsApp Cloud API is temporarily unavailable.
-                    Please reach out to{' '}
-                    <a
-                      href="mailto:founders@connecte.in"
-                      className="font-semibold text-yellow-950 underline hover:text-yellow-800"
-                    >
-                      founders@connecte.in
-                    </a>{' '}
-                    to coordinate access with our developer team.
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* Removed App Review Notice */}
 
             {/* Section label */}
             <div className="flex items-center gap-4 mb-6">
@@ -363,15 +370,18 @@ export default function MetaLogin() {
             <button
               id="meta-connect-btn"
               type="button"
-              disabled={true}
-              className="
+              disabled={step !== 'sdk_ready'}
+              onClick={launchWhatsAppSignup}
+              className={`
                 w-full h-14 flex items-center justify-center gap-3 mb-3
                 text-white font-semibold text-sm tracking-[0.1em] uppercase
-                bg-gray-400 cursor-not-allowed
-                rounded-none
-              "
+                rounded-none transition-all duration-300
+                ${step === 'sdk_ready' 
+                  ? 'bg-gradient-to-r from-[#006D2F] to-[#25D366] hover:brightness-110 cursor-pointer shadow-lg shadow-green-900/20' 
+                  : 'bg-gray-400 cursor-not-allowed'}
+              `}
             >
-              ONBOARDING UNAVAILABLE
+              CONNECT WHATSAPP
             </button>
 
             {/* Secondary CTA */}
