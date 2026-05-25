@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { contactService } from '@/services/contacts';
 import { Loader2, Plus } from 'lucide-react';
 
@@ -26,7 +25,7 @@ export default function AddContactModal({ isOpen, onClose, onSuccess }: AddConta
     name: '',
     phone_number: '+91 ',
     tags: 'regular',
-    opted_in: false,
+    opted_in: true,
   });
 
   const formatToE164 = (phone: string): string => {
@@ -60,7 +59,20 @@ export default function AddContactModal({ isOpen, onClose, onSuccess }: AddConta
         opted_in: true,
       });
     } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Failed to add contact.');
+      let errMsg = 'Failed to add contact.';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          errMsg = detail.map((d: any) => `${d.loc?.[d.loc.length - 1] || 'error'}: ${d.msg}`).join(', ');
+        } else if (typeof detail === 'string') {
+          errMsg = detail;
+        } else if (typeof detail === 'object' && detail !== null) {
+          errMsg = detail.msg || JSON.stringify(detail);
+        }
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -107,17 +119,6 @@ export default function AddContactModal({ isOpen, onClose, onSuccess }: AddConta
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
               />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="opted_in"
-                checked={formData.opted_in}
-                onCheckedChange={(checked) => setFormData({ ...formData, opted_in: !!checked })}
-              />
-              <label htmlFor="opted_in" className="text-xs font-medium cursor-pointer">
-                Consent for marketing messages
-              </label>
             </div>
           </div>
 
