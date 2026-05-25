@@ -17,9 +17,14 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor - Attach active Waba ID
+// Request interceptor - Attach active Waba ID & Authorization header
 api.interceptors.request.use(
   (config) => {
+    const token = sessionStorage.getItem('connecte_auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     const { activeWabaId } = useAuthStore.getState();
     if (activeWabaId) {
       config.headers['X-Waba-Id'] = activeWabaId;
@@ -78,7 +83,10 @@ api.interceptors.response.use(
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => {
+          .then((token) => {
+            if (token) {
+              originalRequest.headers.Authorization = 'Bearer ' + token;
+            }
             return api(originalRequest);
           })
           .catch((err) => {
@@ -94,7 +102,7 @@ api.interceptors.response.use(
         // Call the backend to refresh the token.
         // We use a fresh axios instance here to avoid interceptor loops,
         // and we MUST pass withCredentials: true so the browser sends the HttpOnly refresh_token cookie.
-        await axios.post(
+        const response = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
           {},
           {
@@ -103,8 +111,17 @@ api.interceptors.response.use(
           }
         );
         
+        // Extract the new access token
+        const newAccessToken = response.data.access_token;
+        
+        // Update session storage
+        sessionStorage.setItem('connecte_auth_token', newAccessToken);
+        
+        // Update original request header
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        
         // Process the queue for any other requests that were waiting
-        processQueue(null, null);
+        processQueue(null, newAccessToken);
         
         // Retry the original request (cookies are now updated/refreshed)
         return api(originalRequest);

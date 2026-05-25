@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       // Initial state
       user: null,
-      token: null,
+      token: sessionStorage.getItem('connecte_auth_token') || null,
       isAuthenticated: false,
       isMetaConnected: false,
       metaData: {
@@ -45,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
 
       // Actions
       login: (token, user) => {
+        sessionStorage.setItem('connecte_auth_token', token);
         set({
           token,
           user,
@@ -53,6 +54,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        sessionStorage.removeItem('connecte_auth_token');
         set({
           token: null,
           user: null,
