@@ -24,6 +24,15 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const parseUserIdFromToken = (token: string): string => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.sub || '';
+    } catch {
+      return '';
+    }
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -44,7 +53,7 @@ export default function Signup() {
       const response = await authService.signup({ email: email.trim(), password });
 
       login(response.access_token, {
-        id: '',
+        id: parseUserIdFromToken(response.access_token),
         email: response.user?.user_email || email.trim(),
       });
 

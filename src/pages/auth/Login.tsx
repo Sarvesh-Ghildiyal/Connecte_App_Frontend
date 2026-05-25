@@ -35,6 +35,15 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const parseUserIdFromToken = (token: string): string => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.sub || '';
+    } catch {
+      return '';
+    }
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -47,7 +56,7 @@ export default function Login() {
     try {
       const response = await authService.login({ email: email.trim(), password });
       login(response.access_token, {
-        id: '',
+        id: parseUserIdFromToken(response.access_token),
         email: email.trim(),
       });
       navigate('/dashboard', { replace: true });
