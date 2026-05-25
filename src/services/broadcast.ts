@@ -16,4 +16,22 @@ export const broadcastService = {
     });
     return response.data;
   },
+
+  getStats: async () => {
+    const client_user_id = getClientUserId();
+    const response = await api.get<{
+      total_sent: number;
+      accepted: number;
+      sent: number;
+      delivered: number;
+      read: number;
+      failed: number;
+      delivery_rate: number;
+      read_rate: number;
+    }>('/broadcast/stats', {
+      params: { client_user_id },
+    });
+    return response.data;
+  },
 };
+

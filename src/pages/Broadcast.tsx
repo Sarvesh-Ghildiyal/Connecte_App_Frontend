@@ -23,6 +23,7 @@ export default function Broadcast() {
   const [selectionMode, setSelectionMode] = useState<'tags' | 'contacts'>('tags');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [excludedContactIds, setExcludedContactIds] = useState<string[]>([]);
   const [parameters, setParameters] = useState<TemplateParameterInput[]>([]);
 
   useEffect(() => {
@@ -77,7 +78,13 @@ export default function Broadcast() {
       if (selectionMode === 'contacts') {
         payload.contact_ids = selectedContactIds;
       } else {
-        payload.tags = selectedTags;
+        const matched = contacts.filter(c => !c.is_deleted && c.tags.some(t => selectedTags.includes(t)) && !excludedContactIds.includes(c.id));
+        if (excludedContactIds.length > 0) {
+          // If we manually unchecked some contacts, convert selection to cherry-picked contact_ids
+          payload.contact_ids = matched.map(c => c.id);
+        } else {
+          payload.tags = selectedTags;
+        }
       }
 
       const result = await broadcastService.send(payload);
@@ -96,7 +103,7 @@ export default function Broadcast() {
 
   const recipientCount = selectionMode === 'contacts' 
     ? selectedContactIds.length 
-    : contacts.filter(c => c.tags.some(t => selectedTags.includes(t))).length;
+    : contacts.filter(c => !c.is_deleted && c.tags.some(t => selectedTags.includes(t)) && !excludedContactIds.includes(c.id)).length;
 
   return (
     <div className="flex flex-col h-full bg-[#F9F9F9] overflow-hidden">
@@ -122,9 +129,14 @@ export default function Broadcast() {
             selectionMode={selectionMode}
             onSelectionModeChange={setSelectionMode}
             selectedTags={selectedTags}
-            onSelectTags={setSelectedTags}
+            onSelectTags={(tags) => {
+              setSelectedTags(tags);
+              setExcludedContactIds([]); // Reset manual exclusions when tags change
+            }}
             selectedContactIds={selectedContactIds}
             onSelectContactIds={setSelectedContactIds}
+            excludedContactIds={excludedContactIds}
+            onExcludeContactIds={setExcludedContactIds}
             onNext={nextStep}
             onBack={prevStep}
             templateCategory={selectedTemplate?.category}

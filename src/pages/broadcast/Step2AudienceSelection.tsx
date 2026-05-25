@@ -13,6 +13,8 @@ interface Step2Props {
   onSelectTags: (tags: string[]) => void;
   selectedContactIds: string[];
   onSelectContactIds: (ids: string[]) => void;
+  excludedContactIds: string[];
+  onExcludeContactIds: (ids: string[]) => void;
   onNext: () => void;
   onBack: () => void;
   templateCategory?: TemplateCategory;
@@ -34,6 +36,8 @@ export function Step2AudienceSelection({
   onSelectTags, 
   selectedContactIds,
   onSelectContactIds,
+  excludedContactIds,
+  onExcludeContactIds,
   onNext, 
   onBack,
   templateCategory = 'MARKETING'
@@ -60,8 +64,8 @@ export function Step2AudienceSelection({
       return selectedContactIds.length;
     }
     if (selectedTags.length === 0) return 0;
-    return contacts.filter(c => !c.is_deleted && c.tags.some(t => selectedTags.includes(t))).length;
-  }, [contacts, selectedTags, selectionMode, selectedContactIds]);
+    return contacts.filter(c => !c.is_deleted && c.tags.some(t => selectedTags.includes(t)) && !excludedContactIds.includes(c.id)).length;
+  }, [contacts, selectedTags, selectionMode, selectedContactIds, excludedContactIds]);
 
   const handleToggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -76,6 +80,14 @@ export function Step2AudienceSelection({
       onSelectContactIds(selectedContactIds.filter(cid => cid !== id));
     } else {
       onSelectContactIds([...selectedContactIds, id]);
+    }
+  };
+
+  const handleToggleExclude = (id: string) => {
+    if (excludedContactIds.includes(id)) {
+      onExcludeContactIds(excludedContactIds.filter(cid => cid !== id));
+    } else {
+      onExcludeContactIds([...excludedContactIds, id]);
     }
   };
 
@@ -242,38 +254,48 @@ export function Step2AudienceSelection({
       {/* Preview Table (Only in Tag Mode) */}
       {selectionMode === 'tags' && (
         <div className="space-y-6">
-          <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Audience Preview (Matched Contacts)</p>
-          <div className="bg-white border border-[#E8E8E8]">
+          <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Audience Tuning (Uncheck to Exclude)</p>
+          <div className="bg-white border border-[#E8E8E8] max-h-[300px] overflow-y-auto relative">
             <Table>
-              <TableHeader className="bg-[#1B1B1B]">
+              <TableHeader className="bg-[#1B1B1B] sticky top-0 z-10">
                 <TableRow className="hover:bg-transparent border-none">
+                  <TableHead className="w-12"></TableHead>
                   <TableHead className="text-[10px] font-black tracking-widest text-white uppercase">Contact Name</TableHead>
                   <TableHead className="text-[10px] font-black tracking-widest text-white uppercase">Phone Number</TableHead>
                   <TableHead className="text-[10px] font-black tracking-widest text-white uppercase text-right px-8">Reach</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contacts.filter(c => !c.is_deleted && c.tags.some(t => selectedTags.includes(t))).slice(0, 5).map((contact) => (
-                  <TableRow key={contact.id} className="hover:bg-[#F9F9F9] h-12 transition-colors">
-                    <TableCell className="text-[11px] font-black text-[#1B1B1B] uppercase tracking-wide">{contact.name || 'Anonymous'}</TableCell>
-                    <TableCell className="text-[11px] font-semibold text-[#1B1B1B]/50">{contact.phone_number}</TableCell>
-                    <TableCell className="text-right px-8">
-                      <span className="text-[9px] font-black text-[#25D366] tracking-widest uppercase flex items-center justify-end gap-1">
-                        Verified <Check size={10} />
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {selectedContactCount > 5 && (
+                {contacts.filter(c => !c.is_deleted && c.tags.some(t => selectedTags.includes(t))).map((contact) => {
+                  const isExcluded = excludedContactIds.includes(contact.id);
+                  return (
+                    <TableRow 
+                      key={contact.id} 
+                      className="hover:bg-[#F9F9F9] h-12 transition-colors cursor-pointer"
+                      onClick={() => handleToggleExclude(contact.id)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox 
+                          checked={!isExcluded}
+                          onCheckedChange={() => handleToggleExclude(contact.id)}
+                          className="data-[state=checked]:bg-[#1B1B1B] data-[state=checked]:border-[#1B1B1B]"
+                        />
+                      </TableCell>
+                      <TableCell className="text-[11px] font-black text-[#1B1B1B] uppercase tracking-wide">
+                        {contact.name || 'Anonymous'}
+                      </TableCell>
+                      <TableCell className="text-[11px] font-semibold text-[#1B1B1B]/50">{contact.phone_number}</TableCell>
+                      <TableCell className="text-right px-8">
+                        <span className="text-[9px] font-black text-[#25D366] tracking-widest uppercase flex items-center justify-end gap-1">
+                          Verified <Check size={10} />
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {contacts.filter(c => !c.is_deleted && c.tags.some(t => selectedTags.includes(t))).length === 0 && !isLoading && (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-4 bg-[#F9F9F9] text-[9px] font-black text-[#1B1B1B]/20 uppercase tracking-[0.2em]">
-                      + {selectedContactCount - 5} More Contacts in Selection
-                    </TableCell>
-                  </TableRow>
-                )}
-                {selectedContactCount === 0 && !isLoading && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center py-12 text-[10px] font-bold text-[#1B1B1B]/30 uppercase tracking-widest">
+                    <TableCell colSpan={4} className="text-center py-12 text-[10px] font-bold text-[#1B1B1B]/30 uppercase tracking-widest">
                       No tags selected. Select tags above to build audience.
                     </TableCell>
                   </TableRow>

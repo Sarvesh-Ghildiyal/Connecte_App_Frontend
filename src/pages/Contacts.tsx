@@ -45,6 +45,7 @@ interface ParsedResult {
   validRecords: number;
   duplicatesSkipped: number;
   refId: string;
+  contactsToImport?: any[];
 }
 
 function parseCsv(raw: string): ParsedResult {
@@ -55,26 +56,67 @@ function parseCsv(raw: string): ParsedResult {
     : lines;
 
   const seen = new Set<string>();
-  let valid = 0;
+  const contactsToImport: any[] = [];
   let dupes = 0;
+
+  const formatToE164 = (phone: string): string => {
+    const digits = phone.replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.length === 12 && digits.startsWith('91')) {
+      return `+${digits}`;
+    }
+    if (digits.length === 10) {
+      return `+91${digits}`;
+    }
+    return `+${digits}`;
+  };
 
   dataLines.forEach(line => {
     if (!line.trim()) return;
     const cols = line.split(/[,;]/).map(c => c.trim().replace(/^"|"$/g, ''));
-    const phone = cols[1] || cols[0]; // assume col[1] is phone or take col[0]
-    if (!phone) return;
-    if (seen.has(phone)) {
+    
+    let name: string | null = null;
+    let phone = '';
+
+    if (cols.length >= 2) {
+      const isCol0Phone = /^\+?\d[\d\s-]{8,15}$/.test(cols[0]);
+      const isCol1Phone = /^\+?\d[\d\s-]{8,15}$/.test(cols[1]);
+
+      if (isCol1Phone && !isCol0Phone) {
+        phone = cols[1];
+        name = cols[0] || null;
+      } else if (isCol0Phone && !isCol1Phone) {
+        phone = cols[0];
+        name = cols[1] || null;
+      } else {
+        name = cols[0] || null;
+        phone = cols[1] || cols[0];
+      }
+    } else {
+      phone = cols[0];
+    }
+
+    const formattedPhone = formatToE164(phone);
+    if (!formattedPhone || formattedPhone.length < 10) return;
+
+    if (seen.has(formattedPhone)) {
       dupes++;
     } else {
-      seen.add(phone);
-      valid++;
+      seen.add(formattedPhone);
+      contactsToImport.push({
+        name: name || null,
+        phone_number: formattedPhone,
+        tags: ['imported'],
+        opted_in: true,
+      });
     }
   });
 
   return {
-    validRecords: valid,
+    validRecords: contactsToImport.length,
     duplicatesSkipped: dupes,
     refId: `REF_ID: PRO-${Math.random().toString(36).slice(2, 8).toUpperCase()}-001`,
+    contactsToImport,
   };
 }
 
@@ -246,15 +288,39 @@ export default function Contacts() {
   // ── CSV Import ────────────────────────────────────────────────────────────
   const handleImportClick = () => fileInputRef.current?.click();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check if the file is .xlsx or .xls
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    if (isExcel) {
+      alert("⚠️ Direct XLS/XLSX imports are not supported yet. Please 'Save As' .CSV (Comma Separated Values) in Excel or Google Sheets and upload again. Connecte parses CSV phone list directories beautifully!");
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const raw = ev.target?.result as string;
       const result = parseCsv(raw);
-      setImportResult(result);
-      setShowModal(true);
+
+      if (result.contactsToImport && result.contactsToImport.length > 0) {
+        try {
+          setIsLoading(true);
+          await contactService.createOrUpdate(result.contactsToImport);
+          setImportResult(result);
+          setShowModal(true);
+          await fetchContacts();
+        } catch (err: any) {
+          logger.error('CONTACTS_PAGE', 'Failed to import CSV contacts', { error: err.message });
+          alert('Failed to save imported contacts to server database. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        alert('No valid contact entries found in the file.');
+      }
     };
     reader.readAsText(file);
     // reset so the same file can be re-imported

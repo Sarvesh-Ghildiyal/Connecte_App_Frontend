@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Users, Radio, MessageSquare, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingState } from '@/components/layout/LoadingState';
+import { broadcastService } from '@/services/broadcast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page: /dashboard
@@ -50,6 +52,24 @@ const featureCards: FeatureCard[] = [
 export default function Dashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, isMetaConnected, metaData } = useAuth();
+  const [stats, setStats] = useState<{
+    total_sent: number;
+    accepted: number;
+    sent: number;
+    delivered: number;
+    read: number;
+    failed: number;
+    delivery_rate: number;
+    read_rate: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (isMetaConnected && isAuthenticated) {
+      broadcastService.getStats()
+        .then(data => setStats(data))
+        .catch(err => console.error("Failed to load broadcast stats", err));
+    }
+  }, [isMetaConnected, isAuthenticated]);
 
   if (!isAuthenticated) {
     return <LoadingState message="AUTHENTICATING..." />;
@@ -64,6 +84,7 @@ export default function Dashboard() {
         </p>
         <h1 className="text-headline-lg text-foreground">CONNECTE DASHBOARD</h1>
       </div>
+
 
       {/* Meta connection status card */}
       <div
@@ -123,6 +144,49 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Broadcast Performance Stats */}
+      {isMetaConnected && stats && stats.total_sent > 0 && (
+        <div className="mb-10 bg-white border border-[#E8E8E8] p-8">
+          <p className="text-[10px] font-black text-[#25D366] tracking-[0.25em] uppercase mb-4">
+            BROADCAST_PERFORMANCE
+          </p>
+          <h2 className="text-2xl font-black text-[#1B1B1B] uppercase tracking-tight mb-8">
+            Delivery & Engagement Analytics
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x divide-[#E8E8E8]">
+            <div className="flex flex-col gap-2">
+              <span className="text-[9px] font-black text-[#1B1B1B]/30 tracking-widest uppercase">Total Sent</span>
+              <span className="text-4xl font-black text-[#1B1B1B]">{stats.total_sent.toLocaleString()}</span>
+            </div>
+            
+            <div className="flex flex-col gap-2 md:pl-6">
+              <span className="text-[9px] font-black text-[#1B1B1B]/30 tracking-widest uppercase">Delivery Rate</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-black text-[#25D366]">{stats.delivery_rate}%</span>
+                <span className="text-[9px] font-bold text-[#1B1B1B]/40">({(stats.delivered + stats.read + stats.sent).toLocaleString()} Msg)</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 md:pl-6">
+              <span className="text-[9px] font-black text-[#1B1B1B]/30 tracking-widest uppercase">Read Rate</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-black text-[#1B1B1B]">{stats.read_rate}%</span>
+                <span className="text-[9px] font-bold text-[#1B1B1B]/40">({stats.read.toLocaleString()} Read)</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 md:pl-6">
+              <span className="text-[9px] font-black text-[#1B1B1B]/30 tracking-widest uppercase">Failed Deliveries</span>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-4xl font-black ${stats.failed > 0 ? 'text-red-500' : 'text-[#1B1B1B]'}`}>{stats.failed.toLocaleString()}</span>
+                {stats.failed > 0 && <span className="text-[9px] font-bold text-red-500/60">Requires attention</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Feature cards grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
