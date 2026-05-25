@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Shield, Zap } from 'lucide-react';
+import { Shield, Zap } from 'lucide-react';
 import { logger } from '@/utils/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────

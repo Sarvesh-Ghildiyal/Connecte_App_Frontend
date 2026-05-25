@@ -41,7 +41,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
     const placeholder = placeholders.find(p => p.key === key);
     if (!placeholder) return;
 
-    let newParams = [...parameters];
+    const newParams = [...parameters];
     const existingIndex = newParams.findIndex(p => 
       placeholder.isNumeric ? (p.index === placeholder.index) : (p.name === placeholder.name)
     );
