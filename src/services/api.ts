@@ -20,7 +20,7 @@ export const api = axios.create({
 // Request interceptor - Attach active Waba ID & Authorization header
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('connecte_auth_token');
+    const token = localStorage.getItem('connecte_auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -115,7 +115,7 @@ api.interceptors.response.use(
         const newAccessToken = response.data.access_token;
         
         // Update session storage
-        sessionStorage.setItem('connecte_auth_token', newAccessToken);
+        localStorage.setItem('connecte_auth_token', newAccessToken);
         
         // Update original request header
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
