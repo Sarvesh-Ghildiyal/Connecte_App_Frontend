@@ -22,13 +22,13 @@ function ReadTick({ status }: { status: MessageStatus | null }) {
     return <X size={11} className="text-red-400" />;
   }
   if (status === 'accepted' || status === 'sent') {
-    return <Check size={11} className="text-white/60" />;
+    return <Check size={11} className="text-[#1B1B1B]/40" />;
   }
   // delivered or read — double tick
   return (
     <span className="inline-flex items-center">
-      <Check size={11} className={status === 'read' ? 'text-[#4ADE80]' : 'text-white/60'} />
-      <Check size={11} className={`-ml-1.5 ${status === 'read' ? 'text-[#4ADE80]' : 'text-white/60'}`} />
+      <Check size={11} className={status === 'read' ? 'text-[#3B82F6]' : 'text-[#1B1B1B]/40'} />
+      <Check size={11} className={`-ml-1.5 ${status === 'read' ? 'text-[#3B82F6]' : 'text-[#1B1B1B]/40'}`} />
     </span>
   );
 }
