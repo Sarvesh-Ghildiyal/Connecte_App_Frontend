@@ -65,12 +65,15 @@ export default function Dashboard() {
   } | null>(null);
 
   useEffect(() => {
-    if (isMetaConnected && isAuthenticated) {
+    if (isAuthenticated) {
       broadcastService.getStats({ mode: statsMode })
         .then(data => setStats(data))
-        .catch(err => console.error("Failed to load broadcast stats", err));
+        .catch(err => {
+          console.debug("Failed to load broadcast stats:", err);
+          setStats(null);
+        });
     }
-  }, [isMetaConnected, isAuthenticated, statsMode]);
+  }, [isAuthenticated, statsMode]);
 
   if (!isAuthenticated) {
     return <LoadingState message="AUTHENTICATING..." />;
@@ -152,7 +155,7 @@ export default function Dashboard() {
           BROADCAST_PERFORMANCE
         </p>
         
-        {isMetaConnected && stats && stats.total_sent > 0 ? (
+        {stats && stats.total_sent > 0 ? (
           <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <h2 className="text-2xl font-black text-[#1B1B1B] uppercase tracking-tight">
@@ -231,73 +234,72 @@ export default function Dashboard() {
       </div>
 
       {/* Feature cards grid */}
-      {isMetaConnected && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {featureCards.map((card) => {
-            const locked = card.requiresMeta && !isMetaConnected;
-            return (
-              <div
-                key={card.label}
-                id={`dashboard-card-${card.label.toLowerCase()}`}
-                title={
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {featureCards.map((card) => {
+          const locked = card.requiresMeta && !isMetaConnected;
+          return (
+            <div
+              key={card.label}
+              id={`dashboard-card-${card.label.toLowerCase()}`}
+              title={
+                locked
+                  ? 'Connect your WhatsApp Business Account to unlock this feature'
+                  : undefined
+              }
+              className={`
+                bg-white p-8 flex flex-col gap-6 transition-all group
+                ${
                   locked
-                    ? 'Connect your WhatsApp Business Account to unlock this feature'
-                    : undefined
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:shadow-[0px_20px_40px_rgba(27,27,27,0.06)]'
                 }
+              `}
+              onClick={() => {
+                if (!locked) navigate(card.to);
+                else navigate('/meta/login');
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div
+                  className={`
+                    w-10 h-10 flex items-center justify-center
+                    ${locked ? 'bg-[#E8E8E8] text-[#1B1B1B]/30' : 'bg-[#E8E8E8] text-[#1B1B1B] group-hover:bg-[#25D366] group-hover:text-black transition-colors'}
+                  `}
+                >
+                  {locked ? <Lock size={18} /> : card.icon}
+                </div>
+                <span className="text-label-md text-foreground/30 tracking-[0.08em]">
+                  {locked ? 'LOCKED' : '→'}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-label-md text-foreground tracking-[0.1em] mb-2">
+                  {card.label}
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {card.description}
+                </p>
+              </div>
+
+              <button
                 className={`
-                  bg-white p-8 flex flex-col gap-6 transition-all group
+                  self-start h-10 px-5 text-sm font-semibold tracking-[0.08em] uppercase transition-all rounded-none
                   ${
                     locked
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'cursor-pointer hover:shadow-[0px_20px_40px_rgba(27,27,27,0.06)]'
+                      ? 'bg-[#E8E8E8] text-[#1B1B1B]/40 cursor-not-allowed'
+                      : 'bg-[#E8E8E8] text-[#1B1B1B] hover:bg-[#1B1B1B] hover:text-white'
                   }
                 `}
-                onClick={() => {
-                  if (!locked) navigate(card.to);
-                  else navigate('/meta/login');
-                }}
+                tabIndex={-1}
               >
-                <div className="flex items-start justify-between">
-                  <div
-                    className={`
-                      w-10 h-10 flex items-center justify-center
-                      ${locked ? 'bg-[#E8E8E8] text-[#1B1B1B]/30' : 'bg-[#E8E8E8] text-[#1B1B1B] group-hover:bg-[#25D366] group-hover:text-black transition-colors'}
-                    `}
-                  >
-                    {locked ? <Lock size={18} /> : card.icon}
-                  </div>
-                  <span className="text-label-md text-foreground/30 tracking-[0.08em]">
-                    {locked ? 'LOCKED' : '→'}
-                  </span>
-                </div>
-
-                <div>
-                  <p className="text-label-md text-foreground tracking-[0.1em] mb-2">
-                    {card.label}
-                  </p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {card.description}
-                  </p>
-                </div>
-
-                <button
-                  className={`
-                    self-start h-10 px-5 text-sm font-semibold tracking-[0.08em] uppercase transition-all rounded-none
-                    ${
-                      locked
-                        ? 'bg-[#E8E8E8] text-[#1B1B1B]/40 cursor-not-allowed'
-                        : 'bg-[#E8E8E8] text-[#1B1B1B] hover:bg-[#1B1B1B] hover:text-white'
-                    }
-                  `}
-                  tabIndex={-1}
-                >
-                  {locked ? 'CONNECT META' : `GO TO ${card.label}`}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                {locked ? 'CONNECT META' : `GO TO ${card.label}`}
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
