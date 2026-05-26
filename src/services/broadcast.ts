@@ -11,7 +11,7 @@ export const broadcastService = {
     return response.data;
   },
 
-  getStats: async () => {
+  getStats: async (params?: { mode?: 'all' | 'last' }) => {
     const response = await api.get<{
       total_sent: number;
       accepted: number;
@@ -21,7 +21,7 @@ export const broadcastService = {
       failed: number;
       delivery_rate: number;
       read_rate: number;
-    }>('/broadcast/stats');
+    }>('/broadcast/stats', { params });
     return response.data;
   },
 };

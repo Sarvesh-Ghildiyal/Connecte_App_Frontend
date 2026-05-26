@@ -52,6 +52,7 @@ const featureCards: FeatureCard[] = [
 export default function Dashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, isMetaConnected, metaData } = useAuth();
+  const [statsMode, setStatsMode] = useState<'all' | 'last'>('last');
   const [stats, setStats] = useState<{
     total_sent: number;
     accepted: number;
@@ -65,11 +66,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (isMetaConnected && isAuthenticated) {
-      broadcastService.getStats()
+      broadcastService.getStats({ mode: statsMode })
         .then(data => setStats(data))
         .catch(err => console.error("Failed to load broadcast stats", err));
     }
-  }, [isMetaConnected, isAuthenticated]);
+  }, [isMetaConnected, isAuthenticated, statsMode]);
 
   if (!isAuthenticated) {
     return <LoadingState message="AUTHENTICATING..." />;
@@ -151,9 +152,34 @@ export default function Dashboard() {
           <p className="text-[10px] font-black text-[#25D366] tracking-[0.25em] uppercase mb-4">
             BROADCAST_PERFORMANCE
           </p>
-          <h2 className="text-2xl font-black text-[#1B1B1B] uppercase tracking-tight mb-8">
-            Delivery & Engagement Analytics
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <h2 className="text-2xl font-black text-[#1B1B1B] uppercase tracking-tight">
+              Delivery & Engagement Analytics
+            </h2>
+            
+            <div className="flex border border-[#E8E8E8] p-0.5 bg-[#F9F9F9] self-start sm:self-auto shrink-0">
+              <button
+                onClick={() => setStatsMode('last')}
+                className={`px-4 py-1.5 text-[9px] font-black tracking-widest uppercase transition-all ${
+                  statsMode === 'last'
+                    ? 'bg-[#1B1B1B] text-white'
+                    : 'text-[#1B1B1B]/40 hover:text-[#1B1B1B]'
+                }`}
+              >
+                LAST CAMPAIGN
+              </button>
+              <button
+                onClick={() => setStatsMode('all')}
+                className={`px-4 py-1.5 text-[9px] font-black tracking-widest uppercase transition-all ${
+                  statsMode === 'all'
+                    ? 'bg-[#1B1B1B] text-white'
+                    : 'text-[#1B1B1B]/40 hover:text-[#1B1B1B]'
+                }`}
+              >
+                ALL TIME
+              </button>
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x divide-[#E8E8E8]">
             <div className="flex flex-col gap-2">
