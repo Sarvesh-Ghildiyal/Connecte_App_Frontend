@@ -141,6 +141,7 @@ export interface BroadcastRequest {
   parameters: TemplateParameterInput[];
   tags?: string[];
   contact_ids?: string[];
+  header_image_id?: string;
 }
 
 export interface BroadcastResponse {

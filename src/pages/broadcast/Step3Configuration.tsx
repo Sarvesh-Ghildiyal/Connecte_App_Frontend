@@ -6,6 +6,8 @@ interface Step3Props {
   template: Template;
   parameters: TemplateParameterInput[];
   onUpdateParameters: (p: TemplateParameterInput[]) => void;
+  headerImageId: string;
+  onUpdateHeaderImageId: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -15,10 +17,22 @@ const DYNAMIC_OPTIONS = [
   { label: 'PHONE NUMBER', value: 'contact.phone_number' },
 ];
 
-export function Step3Configuration({ template, parameters, onUpdateParameters, onNext, onBack }: Step3Props) {
+export function Step3Configuration({ 
+  template, 
+  parameters, 
+  onUpdateParameters, 
+  headerImageId,
+  onUpdateHeaderImageId,
+  onNext, 
+  onBack 
+}: Step3Props) {
   
   const bodyText = useMemo(() => {
     return template.components.find(c => c.type === 'BODY')?.text || '';
+  }, [template]);
+
+  const hasImageHeader = useMemo(() => {
+    return template.components.some(c => c.type === 'HEADER' && c.format === 'IMAGE');
   }, [template]);
 
   // Extract all placeholders like {{1}} or {{first_name}}
@@ -92,7 +106,7 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
     parameters.some(param => 
       (p.isNumeric ? param.index === p.index : param.name === p.name) && param.value
     )
-  );
+  ) && (!hasImageHeader || headerImageId.trim() !== '');
 
   return (
     <div className="max-w-6xl mx-auto flex gap-12 pb-32">
@@ -105,6 +119,25 @@ export function Step3Configuration({ template, parameters, onUpdateParameters, o
              <p className="text-[10px] font-black tracking-widest text-[#1B1B1B]/40 uppercase">Map your data variables precisely for delivery</p>
           </div>
         </div>
+
+        {hasImageHeader && (
+          <div className="space-y-4 bg-white border border-[#E8E8E8] p-6">
+            <p className="text-[10px] font-black tracking-[0.2em] text-[#25D366] uppercase">Template Header Image ID</p>
+            <div className="relative">
+              <div className={`absolute left-0 top-0 bottom-0 w-1 ${headerImageId ? 'bg-[#25D366]' : 'bg-[#E8E8E8]'}`} />
+              <input 
+                type="text"
+                value={headerImageId}
+                onChange={(e) => onUpdateHeaderImageId(e.target.value)}
+                placeholder="Enter Meta Media ID (e.g. 1037543291543636)..."
+                className="w-full h-14 bg-[#F3F3F3] border-none outline-none px-6 text-[11px] font-black tracking-widest text-[#1B1B1B] uppercase placeholder:text-[#1B1B1B]/20"
+              />
+            </div>
+            <p className="text-[9px] text-[#1B1B1B]/40 leading-relaxed uppercase font-semibold">
+              This template requires an image header. Enter your pre-uploaded Meta Media ID above to deliver it correctly.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-10">
           <p className="text-[10px] font-black tracking-[0.2em] text-[#1B1B1B]/30 uppercase">Variable Mapping</p>

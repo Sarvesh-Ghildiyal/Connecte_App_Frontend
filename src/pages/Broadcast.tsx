@@ -25,6 +25,7 @@ export default function Broadcast() {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [excludedContactIds, setExcludedContactIds] = useState<string[]>([]);
   const [parameters, setParameters] = useState<TemplateParameterInput[]>([]);
+  const [headerImageId, setHeaderImageId] = useState<string>('');
 
   useEffect(() => {
     if (!hasInitiallyFetched) {
@@ -73,6 +74,7 @@ export default function Broadcast() {
       const payload: any = {
         template_id: selectedTemplate.id,
         parameters: finalParameters,
+        header_image_id: headerImageId || undefined,
       };
 
       if (selectionMode === 'contacts') {
@@ -148,6 +150,8 @@ export default function Broadcast() {
             template={selectedTemplate}
             parameters={parameters}
             onUpdateParameters={setParameters}
+            headerImageId={headerImageId}
+            onUpdateHeaderImageId={setHeaderImageId}
             onNext={nextStep}
             onBack={prevStep}
           />
