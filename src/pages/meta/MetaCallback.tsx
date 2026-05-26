@@ -74,8 +74,10 @@ export default function MetaCallback() {
         await metaSignupService.setup({
           event: payload.event,
           type: payload.type || 'WA_EMBEDDED_SIGNUP',
-          code: payload.code,
-          data: payload.data
+          data: {
+            ...payload.data,
+            code: payload.code
+          }
         });
 
         logger.info('META_CALLBACK', 'Backend setup completed successfully');
