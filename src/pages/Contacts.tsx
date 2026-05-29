@@ -77,6 +77,7 @@ function parseCsv(raw: string): ParsedResult {
     
     let name: string | null = null;
     let phone = '';
+    let parsedTags: string[] = [];
 
     if (cols.length >= 2) {
       const isCol0Phone = /^\+?\d[\d\s-]{8,15}$/.test(cols[0]);
@@ -92,6 +93,8 @@ function parseCsv(raw: string): ParsedResult {
         name = cols[0] || null;
         phone = cols[1] || cols[0];
       }
+      
+      parsedTags = cols.slice(2).filter(t => t);
     } else {
       phone = cols[0];
     }
@@ -103,10 +106,13 @@ function parseCsv(raw: string): ParsedResult {
       dupes++;
     } else {
       seen.add(formattedPhone);
+      
+      const finalTags = Array.from(new Set(['imported', ...parsedTags.map(t => t.toLowerCase())]));
+      
       contactsToImport.push({
         name: name || null,
         phone_number: formattedPhone,
-        tags: ['imported'],
+        tags: finalTags,
         opted_in: true,
       });
     }
