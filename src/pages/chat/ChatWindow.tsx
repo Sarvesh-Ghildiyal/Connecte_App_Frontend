@@ -146,7 +146,7 @@ export default function ChatWindow() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -271,7 +271,7 @@ export default function ChatWindow() {
                     📷 IMAGE
                   </p>
                 )}
-                <p className={`text-sm leading-relaxed ${
+                <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
                   isFailed ? 'text-red-600' : isOutbound ? 'text-white' : 'text-[#1B1B1B]'
                 }`}>
                   {msg.text || (msg.template_name ? `Template: ${msg.template_name}` : '[message]')}
@@ -362,14 +362,14 @@ export default function ChatWindow() {
 
           {/* Text input — hidden in image mode */}
           {!imageMode && (
-            <input
-              type="text"
+            <textarea
               placeholder="TYPE YOUR MESSAGE..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isSending}
-              className="flex-1 h-14 text-sm text-[#1B1B1B] placeholder:text-[#1B1B1B]/25 placeholder:tracking-wider placeholder:text-[11px] outline-none bg-transparent disabled:opacity-50"
+              rows={1}
+              className="flex-1 min-h-[44px] max-h-[120px] py-4 text-sm text-[#1B1B1B] placeholder:text-[#1B1B1B]/25 placeholder:tracking-wider placeholder:text-[11px] outline-none bg-transparent disabled:opacity-50 resize-none overflow-y-auto scrollbar-thin"
             />
           )}
 
