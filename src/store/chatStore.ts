@@ -27,6 +27,10 @@ interface ChatState {
     previewUrl?: boolean,
     contextMessageId?: string | null
   ) => Promise<void>;
+  sendImageMessage: (
+    waId: string,
+    imageId: string
+  ) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -122,6 +126,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const msg = err instanceof Error ? err.message : 'Failed to send message';
       set({ error: msg });
       // Re-throw so ChatWindow can restore the input
+      throw err;
+    }
+  },
+
+  sendImageMessage: async (waId, imageId) => {
+    try {
+      const result = await chatService.sendImageMessage({ wa_id: waId, image_id: imageId });
+
+      const { messages } = get();
+      const existing = messages[waId] || [];
+      const newMessage: Message = {
+        id: result.message_id,
+        conversation_id: waId,
+        direction: 'outbound',
+        type: 'image',
+        text: `[image: ${imageId}]`,
+        template_id: null,
+        template_name: null,
+        contact_name: null,
+        context_message_id: null,
+        status: 'accepted',
+        error_code: null,
+        error_message: null,
+        timestamp: result.timestamp,
+      };
+
+      set({ messages: { ...messages, [waId]: [...existing, newMessage] } });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send image';
+      set({ error: msg });
       throw err;
     }
   },

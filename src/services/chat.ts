@@ -22,4 +22,12 @@ export const chatService = {
     );
     return response.data;
   },
+
+  sendImageMessage: async (data: { wa_id: string; image_id: string }) => {
+    const response = await api.post<{ message_id: string; status: string; timestamp: string }>(
+      '/chat/send-image',
+      data
+    );
+    return response.data;
+  },
 };

@@ -66,6 +66,7 @@ export default function ChatWindow() {
     activeConversationId,
     messages,
     sendMessage,
+    sendImageMessage,
     fetchMessages,
     isLoadingMessages,
   } = useChatStore();
@@ -73,7 +74,10 @@ export default function ChatWindow() {
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [imageMode, setImageMode] = useState(false);
+  const [imageId, setImageId] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const activeConv = conversations.find((c) => c.id === activeConversationId);
   const activeMessages = activeConversationId ? (messages[activeConversationId] ?? []) : [];
@@ -91,11 +95,24 @@ export default function ChatWindow() {
     }
   }, [sendError]);
 
+  // Focus image input when image mode opens
+  useEffect(() => {
+    if (imageMode) {
+      setTimeout(() => imageInputRef.current?.focus(), 50);
+    }
+  }, [imageMode]);
+
+  const toggleImageMode = () => {
+    setImageMode((prev) => !prev);
+    setImageId('');
+    setSendError(null);
+  };
+
   const handleSend = async () => {
     const text = inputValue.trim();
     if (!text || !activeConversationId || isSending) return;
 
-    setInputValue(''); // Clear immediately for UX
+    setInputValue('');
     setIsSending(true);
     setSendError(null);
 
@@ -104,7 +121,26 @@ export default function ChatWindow() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to send message';
       setSendError(msg);
-      setInputValue(text); // Restore on failure
+      setInputValue(text);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendImage = async () => {
+    const id = imageId.trim();
+    if (!id || !activeConversationId || isSending) return;
+
+    setIsSending(true);
+    setSendError(null);
+
+    try {
+      await sendImageMessage(activeConversationId, id);
+      setImageId('');
+      setImageMode(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send image';
+      setSendError(msg);
     } finally {
       setIsSending(false);
     }
@@ -114,6 +150,16 @@ export default function ChatWindow() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleImageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendImage();
+    }
+    if (e.key === 'Escape') {
+      toggleImageMode();
     }
   };
 
@@ -217,6 +263,14 @@ export default function ChatWindow() {
                     TEMPLATE
                   </p>
                 )}
+                {/* Image badge */}
+                {msg.type === 'image' && (
+                  <p className={`text-[9px] font-black tracking-widest uppercase mb-1 flex items-center gap-1 ${
+                    isFailed ? 'text-red-400' : isOutbound ? 'text-white/60' : 'text-[#1B1B1B]/30'
+                  }`}>
+                    📷 IMAGE
+                  </p>
+                )}
                 <p className={`text-sm leading-relaxed ${
                   isFailed ? 'text-red-600' : isOutbound ? 'text-white' : 'text-[#1B1B1B]'
                 }`}>
@@ -266,36 +320,77 @@ export default function ChatWindow() {
       )}
 
       {/* ── Composer Bar ───────────────────────────────────────────────────── */}
-      <div className="shrink-0 flex items-center border-t border-[#E8E8E8] bg-white">
-        {/* Attachment (future) */}
-        <button className="w-14 h-14 flex items-center justify-center text-[#1B1B1B]/30 hover:text-[#1B1B1B] transition-colors shrink-0">
-          <Paperclip size={18} />
-        </button>
+      <div className="shrink-0 border-t border-[#E8E8E8] bg-white">
 
-        {/* Text input */}
-        <input
-          type="text"
-          placeholder="TYPE YOUR MESSAGE..."
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isSending}
-          className="flex-1 h-14 text-sm text-[#1B1B1B] placeholder:text-[#1B1B1B]/25 placeholder:tracking-wider placeholder:text-[11px] outline-none bg-transparent disabled:opacity-50"
-        />
+        {/* Image ID input panel — shown when paperclip is active */}
+        {imageMode && (
+          <div className="flex items-center gap-3 px-6 py-3 bg-[#F8F8F8] border-b border-[#E8E8E8] animate-in slide-in-from-bottom-2 duration-150">
+            <span className="text-[9px] font-black tracking-[0.2em] text-[#1B1B1B]/40 uppercase whitespace-nowrap">Image ID</span>
+            <input
+              ref={imageInputRef}
+              type="text"
+              placeholder="Paste WhatsApp Media Object ID..."
+              value={imageId}
+              onChange={(e) => setImageId(e.target.value)}
+              onKeyDown={handleImageKeyDown}
+              disabled={isSending}
+              className="flex-1 h-9 px-3 text-sm text-[#1B1B1B] placeholder:text-[#1B1B1B]/25 outline-none bg-white border border-[#E8E8E8] focus:border-[#1B1B1B] transition-colors disabled:opacity-50"
+            />
+            <button
+              onClick={toggleImageMode}
+              className="w-8 h-8 flex items-center justify-center text-[#1B1B1B]/30 hover:text-[#1B1B1B] transition-colors"
+              title="Cancel"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
-        {/* Send button */}
-        <button
-          id="send-message-btn"
-          onClick={handleSend}
-          disabled={!inputValue.trim() || isSending}
-          className="h-14 px-7 bg-[#1B1B1B] text-white flex items-center gap-2 text-[11px] font-black tracking-widest uppercase shrink-0 hover:bg-[#25D366] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#1B1B1B]"
-        >
-          {isSending ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <>SEND <ArrowRight size={14} /></>
+        <div className="flex items-center">
+          {/* Paperclip — toggles image mode */}
+          <button
+            onClick={toggleImageMode}
+            className={`w-14 h-14 flex items-center justify-center transition-colors shrink-0 ${
+              imageMode
+                ? 'text-[#25D366]'
+                : 'text-[#1B1B1B]/30 hover:text-[#1B1B1B]'
+            }`}
+            title={imageMode ? 'Cancel image' : 'Send image by ID'}
+          >
+            <Paperclip size={18} />
+          </button>
+
+          {/* Text input — hidden in image mode */}
+          {!imageMode && (
+            <input
+              type="text"
+              placeholder="TYPE YOUR MESSAGE..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isSending}
+              className="flex-1 h-14 text-sm text-[#1B1B1B] placeholder:text-[#1B1B1B]/25 placeholder:tracking-wider placeholder:text-[11px] outline-none bg-transparent disabled:opacity-50"
+            />
           )}
-        </button>
+
+          {imageMode && <div className="flex-1" />}
+
+          {/* Send button */}
+          <button
+            id="send-message-btn"
+            onClick={imageMode ? handleSendImage : handleSend}
+            disabled={imageMode ? (!imageId.trim() || isSending) : (!inputValue.trim() || isSending)}
+            className="h-14 px-7 bg-[#1B1B1B] text-white flex items-center gap-2 text-[11px] font-black tracking-widest uppercase shrink-0 hover:bg-[#25D366] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#1B1B1B]"
+          >
+            {isSending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : imageMode ? (
+              <>SEND 📷<ArrowRight size={14} /></>
+            ) : (
+              <>SEND <ArrowRight size={14} /></>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

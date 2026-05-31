@@ -88,7 +88,7 @@ export interface BulkUploadResponse {
 
 // ─── Chat ───────────────────────────────────────────────────────────────────
 
-export type MessageType = 'text' | 'template';
+export type MessageType = 'text' | 'template' | 'image';
 export type MessageStatus = 'accepted' | 'sent' | 'delivered' | 'read' | 'failed';
 export type MessageDirection = 'inbound' | 'outbound';
 
